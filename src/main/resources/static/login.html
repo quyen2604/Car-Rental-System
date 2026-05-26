@@ -8,46 +8,46 @@
     <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
-    <nav class="navbar">
-        <a href="/" class="nav-brand">🚙 CarRental</a>
-        <div class="nav-links">
-            <a href="/">Trang Chủ</a>
-            <a href="/search.html">Thuê Xe</a>
-        </div>
-    </nav>
-
-    <div class="auth-container">
-        <div class="auth-card">
-            <h2>Đăng Nhập</h2>
-            
-            <!-- Xử lý hiển thị thông báo lỗi từ Spring Security -->
-            <script>
-                const urlParams = new URLSearchParams(window.location.search);
-                if (urlParams.has('error')) {
-                    document.write('<div class="alert alert-error">Sai tên đăng nhập hoặc mật khẩu!</div>');
-                }
-                if (urlParams.has('logout')) {
-                    document.write('<div class="alert" style="background:#dcfce7; color:#166534; display:block;">Đăng xuất thành công!</div>');
-                }
-            </script>
-
-            <form action="/api/auth/login" method="POST">
-                <div class="form-group">
-                    <label for="username">Tên đăng nhập</label>
-                    <input type="text" id="username" name="username" class="form-control" placeholder="Ví dụ: admin" required autofocus>
-                </div>
-                <div class="form-group">
-                    <label for="password">Mật khẩu</label>
-                    <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
-                </div>
-                
-                <button type="submit" class="btn btn-primary">Đăng Nhập</button>
-            </form>
-            
-            <p style="text-align:center; margin-top:1.5rem; color:var(--text-muted);">
-                Tài khoản mặc định: <b>admin</b> / <b>admin123</b>
-            </p>
-        </div>
+<nav class="navbar">
+    <a href="/" class="nav-brand">🚙 CarRental</a>
+    <div class="nav-links">
+        <a href="/">Trang Chủ</a>
+        <a href="/search.html">Thuê Xe</a>
     </div>
+</nav>
+
+<div class="auth-container">
+    <div class="auth-card">
+        <h2>Đăng Nhập</h2>
+
+        <!-- Xử lý hiển thị thông báo lỗi từ Spring Security -->
+        <script>
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('error')) {
+                document.write('<div class="alert alert-error">Sai tên đăng nhập hoặc mật khẩu!</div>');
+            }
+            if (urlParams.has('logout')) {
+                document.write('<div class="alert" style="background:#dcfce7; color:#166534; display:block;">Đăng xuất thành công!</div>');
+            }
+        </script>
+
+        <form action="/api/auth/login" method="POST">
+            <div class="form-group">
+                <label for="username">Tên đăng nhập</label>
+                <input type="text" id="username" name="username" class="form-control" placeholder="Ví dụ: admin" required autofocus>
+            </div>
+            <div class="form-group">
+                <label for="password">Mật khẩu</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Đăng Nhập</button>
+        </form>
+
+        <p style="text-align:center; margin-top:1.5rem; color:var(--text-muted);">
+            Tài khoản mặc định: <b>admin</b> / <b>admin123</b>
+        </p>
+    </div>
+</div>
 </body>
 </html>

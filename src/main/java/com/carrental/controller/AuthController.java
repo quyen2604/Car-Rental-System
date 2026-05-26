@@ -23,4 +23,22 @@ public class AuthController {
         userService.registerUser(email, password, fullName);
         return ResponseEntity.ok(Map.of("message", "Đăng ký thành công!"));
     }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(java.security.Principal principal) {
+        if (principal == null) {
+            return ResponseEntity.ok(Map.of("authenticated", false));
+        }
+        com.carrental.entity.User user = userService.findByEmail(principal.getName());
+        if (user == null) {
+            return ResponseEntity.ok(Map.of("authenticated", false));
+        }
+        return ResponseEntity.ok(Map.of(
+            "authenticated", true,
+            "id", user.getId(),
+            "email", user.getEmail(),
+            "fullName", user.getFullName(),
+            "phone", user.getPhone() != null ? user.getPhone() : ""
+        ));
+    }
 }

@@ -42,4 +42,24 @@ public class UserService implements UserDetailsService {
 
         return userRepository.save(user);
     }
+
+    // Tìm kiếm user theo email
+    public User findByEmail(String email) {
+        return userRepository.findByEmail(email).orElse(null);
+    }
+
+    // Tự động tìm hoặc tạo tài khoản khách (Guest)
+    public User getOrCreateGuestUser(String email, String fullName, String phone) {
+        return userRepository.findByEmail(email).orElseGet(() -> {
+            User guest = User.builder()
+                    .email(email)
+                    .fullName(fullName)
+                    .phone(phone)
+                    .password(passwordEncoder.encode(java.util.UUID.randomUUID().toString()))
+                    .role(com.carrental.entity.Role.RENTER)
+                    .status(com.carrental.entity.UserStatus.ACTIVE)
+                    .build();
+            return userRepository.save(guest);
+        });
+    }
 }
