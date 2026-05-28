@@ -274,8 +274,22 @@ function goToPaymentScreen() {
         }
     }
 
-    // Hiển thị thông báo tính năng đang phát triển và chặn chuyển tiếp
-    showToast('⚙️ Tính năng thanh toán đang được phát triển thêm!', 'error');
+    // Hide Step 1 Form, Show Step 2 Payment
+    document.getElementById('formContent').style.display = 'none';
+    document.getElementById('paymentScreen').style.display = 'block';
+
+    // Format and display deposit amount
+    document.getElementById('paymentDepositAmount').textContent = formatCurrency(bookingDepositAmount);
+
+    // Generate a random transaction verification code (for bank transfer matching)
+    const randomCode = 'CARRENTAL' + Math.floor(100000 + Math.random() * 900000);
+    document.getElementById('paymentContentCode').textContent = randomCode;
+
+    // Dynamically render VietQR image for automatic scanning
+    const qrCodeDiv = document.getElementById('paymentQrCode');
+    if (qrCodeDiv) {
+        qrCodeDiv.innerHTML = `<img src="https://img.vietqr.io/image/techcombank-19035678901234-compact2.png?amount=${bookingDepositAmount}&addInfo=${randomCode}&accountName=CAR%20RENTAL%20SYSTEM%20CO" style="width:100%; height:100%; object-fit:contain; border-radius:6px;" alt="VietQR">`;
+    }
 }
 
 function goToBookingForm() {
