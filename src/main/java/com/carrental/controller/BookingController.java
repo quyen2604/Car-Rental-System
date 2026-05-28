@@ -17,7 +17,20 @@ import java.util.List;
 public class BookingController {
 
     private final BookingService bookingService;
-
+    @Data
+    public static class BookingRequest {
+        private Long renterId;
+        private Long vehicleId;
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private String note;
+        private String guestFullName;
+        private String guestEmail;
+        private String guestPhone;
+        private String paymentId;
+        private String paymentMethod;
+        private Double paymentAmount;
+    }
     // POST /api/bookings - Tạo mới đơn đặt xe
     @PostMapping
     public ResponseEntity<?> createBooking(@RequestBody BookingRequest request) {
@@ -81,20 +94,5 @@ public class BookingController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return ResponseEntity.ok(bookingService.isVehicleAvailable(vehicleId, startDate, endDate));
-    }
-
-    @Data
-    public static class BookingRequest {
-        private Long renterId;
-        private Long vehicleId;
-        private LocalDate startDate;
-        private LocalDate endDate;
-        private String note;
-        private String guestFullName;
-        private String guestEmail;
-        private String guestPhone;
-        private String paymentId;
-        private String paymentMethod;
-        private Double paymentAmount;
     }
 }
