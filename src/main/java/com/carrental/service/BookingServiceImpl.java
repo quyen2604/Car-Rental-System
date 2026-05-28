@@ -120,6 +120,7 @@ public class BookingServiceImpl implements BookingService {
             throw new IllegalArgumentException("Trạng thái không hợp lệ: " + status);
         }
     }
+
     @Override
     public boolean isVehicleAvailable(Long vehicleId, LocalDate startDate, LocalDate endDate) {
         List<Booking> overlapping = bookingRepository.findOverlappingBookings(vehicleId, startDate, endDate);
