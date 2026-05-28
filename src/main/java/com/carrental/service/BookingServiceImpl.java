@@ -75,7 +75,6 @@ public class BookingServiceImpl implements BookingService {
                 .bookingStatus(BookingStatus.PENDING)
                 .note(note)
                 .build();
-
         // Create payment record (UML association)
         if (paymentId != null && !paymentId.isBlank()) {
             Payment payment = Payment.builder()
