@@ -15,4 +15,10 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Integer> {
     List<Vehicle> findByOwnerUserId(int ownerId);
     // Tìm tất cả xe đang dựa theo thành phố location
     List<Vehicle> findByLocation_City(String city);
+
+    @Query("SELECT c FROM Car c WHERE c.location.city = :city")
+    List<Vehicle> findCarsByCity(@Param("city") String city);
+
+    @Query("SELECT m FROM Motorbike m WHERE m.location.city = :city")
+    List<Vehicle> findMotorbikesByCity(@Param("city") String city);
 }

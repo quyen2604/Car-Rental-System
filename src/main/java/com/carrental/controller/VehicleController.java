@@ -23,15 +23,10 @@ public class VehicleController {
     //tìm kiếm xe
     @GetMapping("/search-vehicle")
     public List<Vehicle> searchVehicle(@RequestParam String city, @RequestParam String type) {
-        // 1. Lấy tất cả các xe đang trống (AVAILABLE) tại thành phố đó
-        List<Vehicle> allVehiclesInCity = vehicleRepository.findByLocation_City(city);
-        return allVehiclesInCity.stream()
-                .filter( v -> {
-                    if ("MOTORBIKE".equalsIgnoreCase(type)) {
-                        return v instanceof Motorbike; // Chỉ lấy xe máy
-                    }
-                    return v instanceof Car;
-                }).collect(Collectors.toList());
+        if ("MOTORBIKE".equalsIgnoreCase(type)) {
+            return vehicleRepository.findMotorbikesByCity(city);
+        }
+        return vehicleRepository.findCarsByCity(city);
     }
 
     // Lấy thông tin chi tiết của 1 xe
