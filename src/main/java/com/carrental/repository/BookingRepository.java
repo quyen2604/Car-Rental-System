@@ -16,4 +16,14 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
 
     // Tìm các đơn đặt của một xe cụ thể (dùng để check lịch trùng)
     List<Booking> findByVehicleVehicleId(int vehicleId);
+
+    // Kiểm tra lịch đặt xe trùng
+    @Query("SELECT b FROM Booking b WHERE b.vehicle.vehicleId = :vehicleId " +
+           "AND b.bookingStatus NOT IN (com.carrental.model.enums.BookingStatus.CANCELLED, com.carrental.model.enums.BookingStatus.REJECTED) " +
+           "AND (b.startDate <= :endDate AND b.endDate >= :startDate)")
+    List<Booking> findOverlappingBookings(
+            @Param("vehicleId") int vehicleId,
+            @Param("startDate") java.util.Date startDate,
+            @Param("endDate") java.util.Date endDate
+    );
 }

@@ -31,7 +31,7 @@ public class Vehicle {
     @JoinColumn(name = "owner_id")
     private Owner owner;
 
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "location_id")
     private Location location;
 }
