@@ -3,32 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trang Chủ - Hệ Thống Thuê Xe</title>
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/style.css">
+    <title>Hệ Thống Quản Lý Thuê Xe - CarRental System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/global.css">
 </head>
 <body>
-    <nav class="navbar">
-        <a href="/" class="nav-brand">
-            🚙 CarRental
-        </a>
-        <div class="nav-links">
-            <a href="/">Trang Chủ</a>
-            <a href="/search.html">Thuê Xe</a>
-            <a href="/login.html" class="btn btn-primary">Đăng Nhập</a>
-        </div>
-    </nav>
 
-    <div class="hero">
-        <h1>Thuê xe dễ dàng, di chuyển linh hoạt</h1>
-        <p>Khám phá hàng trăm loại xe ô tô và xe máy với mức giá tốt nhất, thủ tục nhanh chóng, giao xe tận nơi.</p>
-        <div style="display:flex; gap:1rem; justify-content:center;">
-            <a href="/search.html" class="btn btn-primary">Tìm Xe Ngay</a>
-            <a href="/login.html" class="btn btn-outline">Trở thành đối tác</a>
+<div class="sidebar">
+    <div class="sidebar-brand">
+        <i class="bi bi-car-front-fill text-primary"></i>
+        <span>CarRental System</span>
+    </div>
+    <ul class="sidebar-menu">
+        <li><a href="#" class="menu-link active" data-page="home"><i class="bi bi-house-door"></i> Trang Chủ</a></li>
+        <li><a href="#" class="menu-link" data-page="vehicles"><i class="bi bi-truck"></i> Quản Lý Xe</a></li>
+        <li><a href="#" class="menu-link" data-page="bookings"><i class="bi bi-calendar-check"></i> Đơn Đặt Xe</a></li>
+        <li class="menu-separator"></li>
+        <li id="menu-auth"><a href="#" class="menu-link" data-page="auth"><i class="bi bi-box-arrow-in-right"></i> Đăng Nhập / Đăng Ký</a></li>
+        <li id="menu-user" class="d-none">
+            <span class="user-info-text"><i class="bi bi-person-circle"></i> <span id="username-display">User</span></span>
+            <a href="#" id="btn-logout" class="menu-link text-danger"><i class="bi bi-power"></i> Đăng Xuất</a>
+        </li>
+    </ul>
+</div>
+
+<div class="main-wrapper">
+    <header class="topbar">
+        <h5 id="page-title" class="fw-bold m-0">Trang Chủ</h5>
+        <div id="connection-status" class="badge bg-success-subtle text-success border border-success"><i class="bi bi-cloud-check"></i> Kết nối Backend OK</div>
+    </header>
+
+    <main class="content-body" id="main-content">
+    </main>
+</div>
+
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="systemToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body" id="toastBody">Thông báo hệ thống</div>
+            <button type="button" class="btn-close btn-close-white m-auto me-2" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
     </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

@@ -1,85 +1,166 @@
-// Base URL cho API
-const API_URL = 'http://localhost:8080/api';
+// Cấu hình URL kết nối Backend chung
+window.API_BASE_URL = 'http://localhost:8080/api';
 
-// Hàm tiện ích format tiền tệ VNĐ
-const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-};
+document.addEventListener('DOMContentLoaded', () => {
+    initNavigation();
+    checkUserSession();
+    // Nạp trang chủ mặc định khi mở ứng dụng lên
+    loadPage('home');
+});
 
-// Hàm xử lý tìm kiếm xe
-async function searchVehicles(event) {
-    if(event) event.preventDefault();
-    
-    const type = document.getElementById('type').value;
-    const location = document.getElementById('location').value;
-    
-    let url = `${API_URL}/vehicles/search?`;
-    if (type) url += `type=${encodeURIComponent(type)}&`;
-    if (location) url += `location=${encodeURIComponent(location)}`;
-    
-    try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error('Không thể fetch dữ liệu');
-        
-        const data = await response.json();
-        renderVehicles(data);
-    } catch (error) {
-        console.error('Error fetching vehicles:', error);
-        document.getElementById('results').innerHTML = '<p style="text-align:center;width:100%;color:red;">Đã xảy ra lỗi khi tải dữ liệu.</p>';
+// Quản lý việc click Menu chuyển mục
+function initNavigation() {
+    document.querySelectorAll('.menu-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const page = link.getAttribute('data-page');
+            if (page) {
+                document.querySelectorAll('.menu-link').forEach(l => l.classList.remove('active'));
+                link.classList.add('active');
+                loadPage(page);
+            }
+        });
+    });
+}
+
+// Lõi chuyển đổi module giao diện động
+function loadPage(pageName) {
+    const mainContent = document.getElementById('main-content');
+    const pageTitle = document.getElementById('page-title');
+
+    switch(pageName) {
+        case 'home':
+            pageTitle.innerText = "Trang Chủ Tổng Quan";
+            mainContent.innerHTML = `
+                <div class="app-card text-center">
+                    <h2 class="fw-bold text-dark">🚗 Chào Mừng Đến Với Hệ Thống CarRental</h2>
+                    <p class="text-muted">Kiến trúc SPA (Single Page Application) kết nối Backend Spring Boot hoàn chỉnh.</p>
+                </div>`;
+            break;
+
+        case 'auth':
+            pageTitle.innerText = "Xác Thực Hệ Thống";
+            mainContent.innerHTML = getAuthFormTemplate();
+            initAuthEvents(); // Kích hoạt sự kiện đăng ký/đăng nhập từ module auth
+            break;
+
+        case 'vehicles':
+            pageTitle.innerText = "Quản Lý Danh Sách Xe";
+            mainContent.innerHTML = `
+                <div class="app-card">
+                    <h3>🚗 Module Quản Lý Xe</h3>
+                    <p class="text-muted">Tính năng xem danh sách xe, thêm xe mới sẽ tự động mở rộng tại đây ở Bước tiếp theo.</p>
+                </div>`;
+            break;
+
+        default:
+            mainContent.innerHTML = `<div class="alert alert-warning">Mô-đun đang được phát triển...</div>`;
     }
 }
 
-// Hàm render danh sách xe ra HTML
-function renderVehicles(vehicles) {
-    const resultsContainer = document.getElementById('results');
-    
-    if (!vehicles || vehicles.length === 0) {
-        resultsContainer.innerHTML = `
-            <div style="grid-column: 1 / -1; text-align: center; padding: 3rem; background: white; border-radius: 12px;">
-                <h3 style="color: #64748b;">Không tìm thấy xe nào phù hợp.</h3>
-                <p style="color: #94a3b8; margin-top: 0.5rem;">Hãy thử tìm kiếm với từ khóa khác.</p>
+// --- GIAO DIỆN FORM ĐĂNG NHẬP / ĐĂNG KÝ (ĐƯỢC GỘP GỌN GÀNG) ---
+function getAuthFormTemplate() {
+    return `
+    <div class="row g-4 justify-content-center">
+        <div class="col-md-6">
+            <div class="app-card">
+                <h4 class="fw-bold text-success mb-3"><i class="bi bi-person-plus"></i> Đăng Ký (Renter)</h4>
+                <form id="registerForm">
+                    <div class="mb-3"><label class="form-label">Họ và Tên</label><input type="text" id="regName" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Email</label><input type="email" id="regEmail" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Số Điện Thoại</label><input type="text" id="regPhone" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Mật Khẩu</label><input type="password" id="regPassword" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Số Bằng Lái Xe</label><input type="text" id="regLicense" class="form-control" required></div>
+                    <button type="submit" class="btn btn-success w-100">Đăng Ký</button>
+                </form>
             </div>
-        `;
-        return;
-    }
-    
-    let html = '';
-    vehicles.forEach(v => {
-        const icon = v.type === 'car' ? '🚗' : '🏍️';
-        html += `
-            <div class="vehicle-card">
-                <div class="vehicle-image">
-                    ${icon}
-                </div>
-                <div class="vehicle-content">
-                    <div class="vehicle-header">
-                        <div class="vehicle-title">${v.name}</div>
-                        <div class="vehicle-badge">${v.type === 'car' ? 'Ô Tô' : 'Xe Máy'}</div>
-                    </div>
-                    <div class="vehicle-price">
-                        ${formatCurrency(v.pricePerDay)} <span>/ ngày</span>
-                    </div>
-                    <div class="vehicle-features">
-                        <span class="feature-tag">📍 ${v.location}</span>
-                        <span class="feature-tag">🏢 ${v.brand}</span>
-                        ${v.seats ? `<span class="feature-tag">💺 ${v.seats} chỗ</span>` : ''}
-                        <span class="feature-tag">⛽ ${v.fuelType === 'gasoline' ? 'Xăng' : 'Điện'}</span>
-                    </div>
-                    <p style="font-size:0.875rem; color:#64748b; margin-bottom: 1.5rem; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">
-                        ${v.description}
-                    </p>
-                    <button class="btn btn-primary" onclick="alert('Tính năng đang phát triển!')">Đặt Thuê Ngay</button>
-                </div>
+        </div>
+        <div class="col-md-5">
+            <div class="app-card">
+                <h4 class="fw-bold text-primary mb-3"><i class="bi bi-shield-lock"></i> Đăng Nhập</h4>
+                <form id="loginForm">
+                    <div class="mb-3"><label class="form-label">Email</label><input type="email" id="loginEmail" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Mật Khẩu</label><input type="password" id="loginPassword" class="form-control" required></div>
+                    <button type="submit" class="btn btn-primary w-100">Đăng Nhập</button>
+                </form>
             </div>
-        `;
-    });
-    
-    resultsContainer.innerHTML = html;
+        </div>
+    </div>`;
 }
 
-// Tự động load dữ liệu khi vào trang search
-if (window.location.pathname.includes('search.html')) {
-    document.addEventListener('DOMContentLoaded', () => {
-        searchVehicles(); // Load all on init
+// Logic điều khiển xử lý Đăng ký / Đăng nhập
+function initAuthEvents() {
+    // ĐĂNG KÝ
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            fullName: document.getElementById('regName').value,
+            email: document.getElementById('regEmail').value,
+            phone: document.getElementById('regPhone').value,
+            password: document.getElementById('regPassword').value,
+            licenseNumber: document.getElementById('regLicense').value
+        };
+        const res = await fetch(`${window.API_BASE_URL}/auth/register/renter`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if(res.ok) {
+            showNotification("🎉 Đăng ký tài khoản mới thành công!");
+            document.getElementById('loginEmail').value = payload.email;
+        } else {
+            showNotification("❌ Đăng ký thất bại! Email đã tồn tại.", false);
+        }
     });
+
+    // ĐĂNG NHẬP
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const payload = {
+            email: document.getElementById('loginEmail').value,
+            password: document.getElementById('loginPassword').value
+        };
+        const res = await fetch(`${window.API_BASE_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if(res.ok) {
+            const user = await res.json();
+            localStorage.setItem('user', JSON.stringify(user)); // Lưu session vào trình duyệt
+            showNotification(`🔓 Đăng nhập thành công! Chào mừng ${user.fullName}`);
+            checkUserSession();
+            loadPage('home'); // Quay về trang chủ
+        } else {
+            showNotification("❌ Sai tài khoản hoặc mật khẩu!", false);
+        }
+    });
+}
+
+// Kiểm tra xem User đã đăng nhập chưa để hiển thị Tên / Ẩn nút đăng nhập
+function checkUserSession() {
+    const user = JSON.parse(localStorage.getItem('user'));
+    if(user) {
+        document.getElementById('menu-auth').classList.add('d-none');
+        document.getElementById('menu-user').classList.remove('d-none');
+        document.getElementById('username-display').innerText = user.fullName;
+
+        document.getElementById('btn-logout').addEventListener('click', () => {
+            localStorage.removeItem('user');
+            showNotification("👋 Đã đăng xuất khỏi hệ thống");
+            checkUserSession();
+            loadPage('home');
+        });
+    } else {
+        document.getElementById('menu-auth').classList.remove('d-none');
+        document.getElementById('menu-user').classList.add('d-none');
+    }
+}
+
+// Hàm thông báo Toast toàn cục
+function showNotification(message, isSuccess = true) {
+    const toastEl = document.getElementById('systemToast');
+    document.getElementById('toastBody').innerText = message;
+    toastEl.className = `toast align-items-center text-white border-0 ${isSuccess ? 'bg-success' : 'bg-danger'}`;
+    new bootstrap.Toast(toastEl).show();
 }

@@ -4,49 +4,54 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())   // Tắt CSRF cho đơn giản (dev mode)
+                // 1. Kích hoạt cấu hình CORS (Cho phép file HTML bên ngoài gọi vào API)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-            .authorizeHttpRequests(auth -> auth
-                // Cho phép truy cập không cần đăng nhập
-                .requestMatchers("/", "/index.html", "/login.html", "/search.html").permitAll()
-                .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
-                .requestMatchers("/api/vehicles/search", "/api/vehicles").permitAll()
-                .requestMatchers("/api/auth/register").permitAll()
+                // 2. Tắt CSRF (Bắt buộc phải tắt đối với REST API sử dụng Stateless)
+                .csrf(csrf -> csrf.disable())
 
-                // Các request khác phải đăng nhập
-                .anyRequest().authenticated()
-            )
+                // 3. Cấu hình phân quyền đường dẫn
+                .authorizeHttpRequests(auth -> auth
+                        // Mở cửa hoàn toàn cho các API liên quan đến Authentication (Đăng ký, Đăng nhập)
+                        .requestMatchers("/api/auth/**").permitAll()
+                        // Bất kỳ request nào khác tạm thời mở ra để chúng ta dễ test giao diện gốc
+                        .anyRequest().permitAll()
+                )
 
-            .formLogin(form -> form
-                .loginPage("/login.html")           // Trang login tùy chỉnh
-                .loginProcessingUrl("/api/auth/login")  // URL xử lý đăng nhập
-                .defaultSuccessUrl("/search.html", true)
-                .failureUrl("/login.html?error=true")
-                .permitAll()
-            )
-
-            .logout(logout -> logout
-                .logoutUrl("/api/auth/logout")
-                .logoutSuccessUrl("/login.html?logout=true")
-                .permitAll()
-            );
+                // 4. Đưa Session về chế độ STATELESS (Không dùng Session dính liền giao diện nữa)
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                );
 
         return http.build();
+    }
+
+    // Bộ cấu hình CORS cấp quyền cho Frontend kết nối mượt mà
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of("*")); // Cho phép mọi nguồn (bao gồm file HTML của bạn)
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Cache-Control"));
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 }
