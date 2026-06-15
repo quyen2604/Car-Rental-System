@@ -13,5 +13,6 @@ import java.util.List;
 public interface VehicleRepository extends JpaRepository<Vehicle, Integer> {
     // Tìm danh sách xe của một chủ xe cụ thể
     List<Vehicle> findByOwnerUserId(int ownerId);
-
+    // Tìm tất cả xe đang dựa theo thành phố location
+    List<Vehicle> findByLocation_City(String city);
 }
