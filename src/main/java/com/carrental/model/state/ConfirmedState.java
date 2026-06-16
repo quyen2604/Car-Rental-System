@@ -4,7 +4,6 @@ import com.carrental.model.entity.Booking;
 import com.carrental.model.enums.BookingStatus;
 
 public class ConfirmedState implements BookingState {
-
     @Override
     public void payDeposit(Booking booking) {
         System.out.println("Đóng tiền cọc thành công.");
