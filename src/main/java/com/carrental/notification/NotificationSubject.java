@@ -11,6 +11,7 @@ import java.util.List;
 public class NotificationSubject {
     private final List<NotificationObserver> observers = new ArrayList<>();
 
+    // Đăng ký một Observer mới vào hệ thống
     public void registerObserver(NotificationObserver observer) {
         if (!observers.contains(observer)) {
             observers.add(observer);
@@ -22,11 +23,13 @@ public class NotificationSubject {
         observers.remove(observer);
     }
 
+    // Phát thông báo đến toàn bộ các Observer đang lắng nghe
     public void notifyObservers(NotificationEvent event) {
         for (NotificationObserver observer : observers) {
             observer.update(event);
         }
     }
+    // TRONG CLASS XỬ LÝ NOTIFY OBSERVERS CỦA BẠN (Subject hoặc ObserverImpl)
     @Autowired
     private NotificationRepository notificationRepository;
 

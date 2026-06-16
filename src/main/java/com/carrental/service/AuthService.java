@@ -42,6 +42,7 @@ public class AuthService {
     }
 
     public void logout(int userId) {
+        // Logic xóa session hoặc revoke token (ở mức cơ bản tạm thời để trống)
         System.out.println("User với ID " + userId + " đã đăng xuất.");
     }
 }

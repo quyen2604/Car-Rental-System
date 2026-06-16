@@ -5,6 +5,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class ConsoleNotificationObserver implements NotificationObserver {
 
+    // Tự động đăng ký Observer này vào Hệ thống Subject khi Spring khởi tạo xong
     public ConsoleNotificationObserver(NotificationSubject notificationSubject) {
         notificationSubject.registerObserver(this);
     }

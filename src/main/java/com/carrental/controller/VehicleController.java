@@ -1,26 +1,23 @@
 package com.carrental.controller;
 
-import com.carrental.model.entity.Car;
-import com.carrental.model.entity.Motorbike;
 import com.carrental.model.entity.Vehicle;
-import com.carrental.model.enums.VehicleStatus;
 import com.carrental.repository.VehicleRepository;
+import com.carrental.service.VehicleService; // <-- Đã import lớp Service chuẩn
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/vehicles")
-@RequiredArgsConstructor
+@RequiredArgsConstructor // <-- Sử dụng lombok tự động tạo Constructor để tiêm các dependency final bên dưới
 @CrossOrigin(origins = "*")
 public class VehicleController {
 
-    @Autowired
-    private VehicleRepository vehicleRepository;
-
+    private final VehicleRepository vehicleRepository;
+    private final VehicleService vehicleService;
     @GetMapping("/search-vehicle")
     public List<Vehicle> searchVehicle(@RequestParam String city, @RequestParam String type) {
         if ("MOTORBIKE".equalsIgnoreCase(type)) {
@@ -39,61 +36,31 @@ public class VehicleController {
     @GetMapping
     public ResponseEntity<List<Vehicle>> getAllVehicles() {
         try {
-            List<Vehicle> list = vehicleRepository.findAll();
-            return ResponseEntity.ok(list);
+            return ResponseEntity.ok(vehicleRepository.findAll());
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
     }
 
     @PostMapping
-    public ResponseEntity<?> createVehicle(@RequestBody java.util.Map<String, Object> payload) {
+    public ResponseEntity<?> createVehicle(@RequestBody Map<String, Object> payload) {
         try {
-            Vehicle vehicle;
-
-            if (payload.containsKey("seatNumber") && payload.get("seatNumber") != null && !payload.get("seatNumber").toString().isEmpty()) {
-                Car car = new Car();
-                car.setSeatNumber(Integer.parseInt(payload.get("seatNumber").toString()));
-                vehicle = car;
-            }
-            else {
-                Motorbike motorbike = new Motorbike();
-                if (payload.containsKey("engineCapacity") && payload.get("engineCapacity") != null && !payload.get("engineCapacity").toString().isEmpty()) {
-                    motorbike.setEngineCapacity(Integer.parseInt(payload.get("engineCapacity").toString()));
-                }
-                vehicle = motorbike;
-            }
-
-            vehicle.setBrand(payload.get("brand").toString());
-            vehicle.setModel(payload.get("model").toString());
-            vehicle.setLicensePlate(payload.get("licensePlate").toString());
-            vehicle.setPricePerDay(Double.parseDouble(payload.get("pricePerDay").toString()));
-            vehicle.setDescription(payload.get("description") != null ? payload.get("description").toString() : "");
-
-            vehicle.setVehicleStatus(VehicleStatus.PENDING);
-
-            Vehicle savedVehicle = vehicleRepository.save(vehicle);
+            // Không còn báo lỗi đỏ ở vehicleService nữa vì đã được tiêm qua Constructor ở trên
+            Vehicle savedVehicle = vehicleService.registerVehicle(payload);
             return ResponseEntity.ok(savedVehicle);
-
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Lỗi xử lý đăng ký phương tiện: " + e.getMessage());
         }
     }
 
-    @PutMapping("/{id}/status")
-    public ResponseEntity<?> updateVehicleStatus(@PathVariable int id, @RequestParam String status) {
+    // API phục vụ Admin phê duyệt hồ sơ xe
+    @PutMapping("/{id}/approval")
+    public ResponseEntity<?> updateVehicleApproval(@PathVariable int id, @RequestParam String status) {
         try {
-            Vehicle vehicle = vehicleRepository.findById(id)
-                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy phương tiện với ID: " + id));
-
-           VehicleStatus statusEnum = VehicleStatus.valueOf(status.toUpperCase().trim());
-            vehicle.setVehicleStatus(statusEnum);
-
-            vehicleRepository.save(vehicle);
-
-            return ResponseEntity.ok("Thay đổi trạng thái duyệt xe thành công!");
+            vehicleService.approveOrRejectVehicle(id, status);
+            return ResponseEntity.ok("Xử lý phê duyệt hồ sơ xe thành công!");
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("Trạng thái duyệt xe không hợp lệ: " + e.getMessage());
+            return ResponseEntity.badRequest().body("Trạng thái phê duyệt không hợp lệ: " + e.getMessage());
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body("Lỗi hệ thống: " + e.getMessage());
         }

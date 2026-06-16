@@ -10,4 +10,5 @@ import lombok.*;
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 public class Owner extends User {
+    // Sơ đồ không có thuộc tính riêng, giữ nguyên để phân hệ
 }

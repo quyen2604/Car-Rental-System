@@ -15,7 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/bookings")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*") // Thêm dòng này để Frontend gọi API không bị lỗi CORS block
 public class BookingController {
 
     private final BookingService bookingService;
@@ -73,7 +73,6 @@ public class BookingController {
             return ResponseEntity.internalServerError().body("Đã xảy ra lỗi: " + e.getMessage());
         }
     }
-
     @PostMapping("/{bookingId}/approve")
     public ResponseEntity<String> approveBooking(@PathVariable String bookingId) {
         try {

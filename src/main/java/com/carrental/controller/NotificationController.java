@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/notifications")
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = "*") // Cấp quyền cho file HTML gọi vào không bị chặn
 public class NotificationController {
 
     @Autowired
