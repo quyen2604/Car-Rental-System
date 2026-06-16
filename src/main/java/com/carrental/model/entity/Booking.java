@@ -45,6 +45,8 @@ public class Booking {
         this.state = new PendingState();
         this.bookingStatus = BookingStatus.PENDING;
     }
+
+    //database
     @PostLoad
     public void restoreStateFromEnum() {
         if (bookingStatus == null) {
