@@ -29,7 +29,7 @@ public class AuthService {
         User user = userRepository.findByEmail(loginRequest.getEmail())
                 .orElseThrow(() -> new RuntimeException("Email không tồn tại!"));
 
-        // Kiểm tra mật khẩu (Thực tế sẽ dùng BCryptPasswordEncoder để matches)
+        // Kiểm tra mật khẩu
         if (!user.getPassword().equals(loginRequest.getPassword())) {
             throw new RuntimeException("Mật khẩu không chính xác!");
         }
@@ -42,7 +42,6 @@ public class AuthService {
     }
 
     public void logout(int userId) {
-        // Logic xóa session hoặc revoke token (ở mức cơ bản tạm thời để trống)
         System.out.println("User với ID " + userId + " đã đăng xuất.");
     }
 }
