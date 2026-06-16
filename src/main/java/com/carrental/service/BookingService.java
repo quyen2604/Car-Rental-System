@@ -11,6 +11,7 @@ import com.carrental.repository.BookingRepository;
 import com.carrental.repository.UserRepository;
 import com.carrental.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,7 +39,8 @@ public class BookingService {
 
         // 2. Tìm người thuê
         User user = userRepository.findById(request.getRenterId())
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người dùng với ID: " + request.getRenterId()));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Không tìm thấy người dùng với ID: " + request.getRenterId()));
         if (!(user instanceof Renter)) {
             throw new IllegalArgumentException("Người dùng không phải là người thuê xe (Renter).");
         }
@@ -87,13 +89,126 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponse cancelBooking(int bookingId) {
+    public BookingResponse approveBooking(int bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
-        if (booking.getBookingStatus() != BookingStatus.PENDING && booking.getBookingStatus() != BookingStatus.CONFIRMED) {
-            throw new IllegalStateException("Chỉ có thể hủy đơn đặt xe ở trạng thái PENDING hoặc CONFIRMED.");
+
+        // Khôi phục lại State object từ Enum dưới DB
+        booking.restoreStateFromEnum();
+
+        // Gọi ủy quyền confirm. Nếu không hợp lệ sẽ tự văng lỗi từ AbstractBookingState.
+        booking.confirm();
+        
+        // Ghi nhận thời gian xác nhận để tính tự động hủy sau 12h
+        booking.setConfirmedAt(new Date());
+
+        Booking savedBooking = bookingRepository.save(booking);
+        return mapToResponse(savedBooking);
+    }
+
+    @Transactional
+    public BookingResponse cancelBooking(int bookingId, String role) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
+
+        if ("OWNER".equalsIgnoreCase(role) && booking.getBookingStatus() == BookingStatus.CONFIRMED) {
+            throw new IllegalStateException("Chủ xe không thể hủy đơn khi đang chờ khách cọc.");
         }
-        booking.setBookingStatus(BookingStatus.CANCELLED);
+
+        // Tính hoàn cọc nếu đơn đã ở trạng thái DEPOSIT_PAID
+        if (booking.getBookingStatus() == BookingStatus.DEPOSIT_PAID || booking.getBookingStatus() == BookingStatus.CONFIRMED) {
+            double deposit = booking.getTotalAmount(); // Giả sử cọc = 100% totalAmount cho đơn giản, hoặc có thể custom
+            if ("OWNER".equalsIgnoreCase(role)) {
+                // Owner hủy: Hoàn 100%
+                booking.setRefundAmount(deposit);
+                System.out.println("Owner hủy, hoàn tiền cọc 100%: " + deposit);
+            } else {
+                // Renter hủy
+                long diffMs = booking.getStartDate().getTime() - System.currentTimeMillis();
+                long hours = diffMs / (1000 * 60 * 60);
+                
+                if (hours > 48) {
+                    booking.setRefundAmount(deposit); // 100%
+                    System.out.println("Renter hủy trước >48h, hoàn 100%: " + deposit);
+                } else if (hours > 24) {
+                    booking.setRefundAmount(deposit * 0.5); // 50%
+                    System.out.println("Renter hủy trước 24-48h, hoàn 50%: " + (deposit * 0.5));
+                } else {
+                    booking.setRefundAmount(0); // 0%
+                    System.out.println("Renter hủy trước <24h, hoàn 0%");
+                }
+            }
+        }
+
+        // Khôi phục lại State object từ Enum dưới DB
+        booking.restoreStateFromEnum();
+
+        // Gọi ủy quyền cancel. Nếu không hợp lệ sẽ tự văng lỗi từ AbstractBookingState.
+        booking.cancel();
+
+        Booking savedBooking = bookingRepository.save(booking);
+        return mapToResponse(savedBooking);
+    }
+    
+    @Transactional
+    public BookingResponse payDeposit(int bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
+
+        booking.restoreStateFromEnum();
+        booking.payDeposit();
+
+        Booking savedBooking = bookingRepository.save(booking);
+        return mapToResponse(savedBooking);
+    }
+
+    @Transactional
+    public BookingResponse pickUpVehicle(int bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
+
+        booking.restoreStateFromEnum();
+        booking.pickUpVehicle();
+
+        Booking savedBooking = bookingRepository.save(booking);
+        return mapToResponse(savedBooking);
+    }
+
+    @Transactional
+    public BookingResponse returnVehicle(int bookingId, double lateFee, double damageFee) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
+
+        booking.restoreStateFromEnum();
+        booking.returnVehicle(lateFee, damageFee);
+
+        Booking savedBooking = bookingRepository.save(booking);
+        return mapToResponse(savedBooking);
+    }
+
+    @Transactional
+    public BookingResponse completeBooking(int bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
+
+        booking.restoreStateFromEnum();
+        booking.complete();
+
+        Booking savedBooking = bookingRepository.save(booking);
+        return mapToResponse(savedBooking);
+    }
+
+    @Transactional
+    public BookingResponse rejectBooking(int bookingId) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
+        
+        // Khôi phục lại State object từ Enum dưới DB
+        booking.restoreStateFromEnum();
+        
+        // Gọi ủy quyền cancel. Nếu không hợp lệ sẽ tự văng lỗi từ AbstractBookingState.
+        booking.cancel();
+        
         Booking savedBooking = bookingRepository.save(booking);
         return mapToResponse(savedBooking);
     }
@@ -103,10 +218,39 @@ public class BookingService {
         return bookings.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 
+    public List<BookingResponse> getOwnerBookings(int ownerId) {
+        List<Booking> bookings = bookingRepository.findByVehicleOwnerUserId(ownerId);
+        return bookings.stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
     public BookingResponse getBookingById(int bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
         return mapToResponse(booking);
+    }
+
+    @Scheduled(fixedRate = 3600000) // Chạy mỗi 1 giờ
+    @Transactional
+    public void autoCancelUnpaidBookings() {
+        System.out.println("Scheduler: Quét các đơn hàng quá 12h chưa cọc...");
+        List<Booking> allBookings = bookingRepository.findAll();
+        
+        // Tìm các đơn CONFIRMED quá 12h
+        List<Booking> overdueBookings = allBookings.stream()
+                .filter(b -> b.getBookingStatus() == BookingStatus.CONFIRMED && b.getConfirmedAt() != null)
+                .filter(b -> {
+                    long diffMs = System.currentTimeMillis() - b.getConfirmedAt().getTime();
+                    long hours = diffMs / (1000 * 60 * 60);
+                    return hours >= 12;
+                })
+                .collect(Collectors.toList());
+
+        for (Booking b : overdueBookings) {
+            System.out.println("Scheduler: Tự động hủy Booking ID " + b.getBookingId() + " do quá hạn cọc.");
+            b.restoreStateFromEnum();
+            b.cancel();
+            bookingRepository.save(b);
+        }
     }
 
     private BookingResponse mapToResponse(Booking booking) {
@@ -116,6 +260,7 @@ public class BookingService {
         response.setStartDate(booking.getStartDate());
         response.setEndDate(booking.getEndDate());
         response.setTotalAmount(booking.getTotalAmount());
+        response.setRefundAmount(booking.getRefundAmount());
         response.setBookingStatus(booking.getBookingStatus().name());
 
         if (booking.getRenter() != null) {

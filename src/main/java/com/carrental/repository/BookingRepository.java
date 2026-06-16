@@ -14,6 +14,9 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
     // Tìm lịch sử đặt xe của người thuê
     List<Booking> findByRenterUserId(int renterId);
 
+    // Tìm lịch sử đơn đặt xe của chủ xe (Owner)
+    List<Booking> findByVehicleOwnerUserId(int ownerId);
+
     // Tìm các đơn đặt của một xe cụ thể (dùng để check lịch trùng)
     List<Booking> findByVehicleVehicleId(int vehicleId);
 

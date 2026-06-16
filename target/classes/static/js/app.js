@@ -50,7 +50,13 @@ function checkUserSession() {
         if (authBtn) authBtn.style.display = 'none';
         if (userDropdown) userDropdown.style.display = 'flex';
         if (usernameDisplay) usernameDisplay.innerText = `👤 ${user.fullName}`;
-        if (myBookingsLink) myBookingsLink.style.display = 'inline-block';
+        if (myBookingsLink) {
+            myBookingsLink.style.display = 'inline-block';
+            const isOwner = (user.licenseNumber === undefined || user.licenseNumber === null);
+            if (isOwner) {
+                myBookingsLink.innerText = 'Quản Lý Đơn Thuê';
+            }
+        }
     } else {
         if (authBtn) authBtn.style.display = 'inline-flex';
         if (userDropdown) userDropdown.style.display = 'none';
@@ -289,10 +295,10 @@ function switchTab(tab) {
     }
 }
 
-// Load lịch sử đặt xe của renter
 async function loadRenterBookings() {
     const userStr = localStorage.getItem('user');
     const bookingList = document.getElementById('bookingList');
+    const bookingsSectionTitle = document.getElementById('bookingsSectionTitle');
     if (!bookingList) return;
 
     if (!userStr) {
@@ -301,17 +307,24 @@ async function loadRenterBookings() {
     }
 
     const user = JSON.parse(userStr);
+    const isOwner = (user.licenseNumber === undefined || user.licenseNumber === null);
+
+    if (bookingsSectionTitle) {
+        bookingsSectionTitle.innerText = isOwner ? '🛠️ Quản Lý Đơn Thuê Của Bạn' : '📂 Lịch Sử Chuyến Đi Của Bạn';
+    }
+
     bookingList.innerHTML = '<div class="status-message">🔄 Đang tải lịch sử đặt xe...</div>';
 
     try {
-        const response = await fetch(`${window.API_BASE_URL}/bookings/renter/${user.userId}`);
+        const endpoint = isOwner ? `/bookings/owner/${user.userId}` : `/bookings/renter/${user.userId}`;
+        const response = await fetch(`${window.API_BASE_URL}${endpoint}`);
         if (!response.ok) throw new Error('Không thể tải danh sách đặt xe.');
 
         const bookings = await response.json();
         bookingList.innerHTML = '';
 
         if (bookings.length === 0) {
-            bookingList.innerHTML = '<div class="status-message">📭 Bạn chưa có đơn đặt xe nào. Hãy tìm kiếm xe và đặt ngay nhé!</div>';
+            bookingList.innerHTML = '<div class="status-message">📭 Hiện tại chưa có đơn đặt xe nào.</div>';
             return;
         }
 
@@ -322,19 +335,76 @@ async function loadRenterBookings() {
             
             const item = document.createElement('div');
             item.className = 'booking-item';
+            
+            let actionButtons = '';
+            let statusDisplay = statusText;
+
+            if (b.bookingStatus === 'CONFIRMED') {
+                if (isOwner) {
+                    statusDisplay = 'Đã duyệt, chờ khách cọc';
+                } else {
+                    statusDisplay = 'Đã duyệt, hãy cọc';
+                    actionButtons = `
+                        <button class="btn btn-primary" onclick="payDeposit(${b.bookingId})">Thanh toán cọc</button>
+                        <button class="btn btn-danger" onclick="cancelBooking(${b.bookingId}, 'RENTER')" style="margin-left: 0.5rem;">Hủy đặt xe</button>
+                    `;
+                }
+            } else if (b.bookingStatus === 'DEPOSIT_PAID') {
+                statusDisplay = 'Đã cọc';
+                if (!isOwner) {
+                    actionButtons = `
+                        <button class="btn btn-danger" onclick="cancelBooking(${b.bookingId}, 'RENTER')">Hủy đặt xe</button>
+                    `;
+                } else {
+                    actionButtons = `
+                        <button class="btn btn-primary" onclick="pickUpVehicle(${b.bookingId})">Bàn giao xe</button>
+                        <button class="btn btn-danger" onclick="cancelBooking(${b.bookingId}, 'OWNER')" style="margin-left: 0.5rem;">Hủy đặt xe (Hoàn 100%)</button>
+                    `;
+                }
+            } else if (b.bookingStatus === 'RENTING') {
+                statusDisplay = 'Đang cho thuê';
+                if (isOwner) {
+                    actionButtons = `
+                        <button class="btn btn-primary" onclick="returnVehicle(${b.bookingId})">Xác nhận nhận lại xe</button>
+                    `;
+                }
+            } else if (b.bookingStatus === 'RETURNED') {
+                statusDisplay = 'Đã trả xe';
+                if (!isOwner) {
+                    actionButtons = `
+                        <button class="btn btn-primary" onclick="completeBooking(${b.bookingId})">Thanh toán & Hoàn thành</button>
+                    `;
+                } else {
+                    statusDisplay = 'Đã nhận xe, chờ thanh toán';
+                }
+            } else if (b.bookingStatus === 'COMPLETED') {
+                statusDisplay = 'Đã hoàn thành';
+            } else if (b.bookingStatus === 'PENDING') {
+                if (isOwner) {
+                    actionButtons = `
+                        <button class="btn btn-primary" onclick="approveBooking(${b.bookingId})">Duyệt Đơn</button>
+                        <button class="btn btn-danger" onclick="rejectBooking(${b.bookingId})" style="margin-left: 0.5rem;">Từ Chối</button>
+                    `;
+                } else {
+                    actionButtons = `
+                        <button class="btn btn-danger" onclick="cancelBooking(${b.bookingId}, 'RENTER')">Hủy đặt xe</button>
+                    `;
+                }
+            }
+
             item.innerHTML = `
                 <div class="booking-avatar">🚗</div>
                 <div class="booking-details">
                     <h4>${b.vehicleBrand} ${b.vehicleModel}</h4>
                     <p>📍 Biển số: <strong>${b.licensePlate}</strong></p>
+                    <p>👤 Người thuê: <strong>${b.renterName}</strong></p>
                     <p>📅 Thời gian: từ <strong>${formatDate(b.startDate)}</strong> đến <strong>${formatDate(b.endDate)}</strong></p>
                     <p>💰 Tổng cộng: <strong style="color:var(--primary); font-size:1.1rem;">${formatVND(b.totalAmount)}</strong> (${formatVND(b.pricePerDay)}/ngày)</p>
-                    <span class="booking-badge ${statusClass}">${statusText}</span>
+                    <span class="booking-badge ${statusClass}">${statusDisplay}</span>
+                    ${b.refundAmount > 0 ? `<p style="color: green; margin-top: 5px;">💸 Số tiền hoàn trả: <strong>${formatVND(b.refundAmount)}</strong></p>` : ''}
                 </div>
                 <div>
-                    ${b.bookingStatus !== 'CANCELLED' ? `
-                        <button class="btn btn-danger" onclick="cancelBooking(${b.bookingId})">Hủy đặt xe</button>
-                    ` : ''}
+                    ${actionButtons}
                 </div>
             `;
             bookingList.appendChild(item);
@@ -345,24 +415,121 @@ async function loadRenterBookings() {
 }
 
 // Hủy đặt xe
-async function cancelBooking(bookingId) {
-    if (!confirm('Bạn có chắc chắn muốn hủy đơn đặt xe này không?')) return;
+async function cancelBooking(id, role = 'RENTER') {
+    let confirmMsg = 'Bạn có chắc chắn muốn hủy đơn đặt xe này không?';
+    if (role === 'RENTER') {
+        confirmMsg += '\nLưu ý: Nếu đơn đã thanh toán cọc, tiền hoàn sẽ được tính theo quy định (<24h mất cọc, >48h hoàn 100%).';
+    }
+    if (!confirm(confirmMsg)) return;
 
     try {
-        const response = await fetch(`${window.API_BASE_URL}/bookings/${bookingId}/cancel`, {
+        const response = await fetch(`${window.API_BASE_URL}/bookings/${id}/cancel?role=${role}`, {
             method: 'POST'
         });
-
-        if (!response.ok) {
-            const err = await response.text();
-            throw new Error(err || 'Không thể hủy đơn đặt xe.');
-        }
-
-        showToast('Đã hủy đặt xe thành công!');
+        if (!response.ok) throw new Error(await response.text());
+        showToast('Đã hủy đặt xe thành công.');
         loadRenterBookings();
     } catch (err) {
         showToast(err.message, 'error');
     }
+}
+
+// Thanh toán cọc
+async function payDeposit(id) {
+    if (!confirm('Bạn có chắc chắn muốn thanh toán tiền cọc cho đơn này không?')) return;
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/bookings/${id}/pay-deposit`, {
+            method: 'POST'
+        });
+        if (!response.ok) throw new Error(await response.text());
+        showToast('Đã thanh toán tiền cọc thành công!');
+        loadRenterBookings();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+// Bàn giao xe (Owner)
+async function pickUpVehicle(id) {
+    if (!confirm('Xác nhận đã bàn giao xe cho khách?')) return;
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/bookings/${id}/pick-up`, {
+            method: 'POST'
+        });
+        if (!response.ok) throw new Error(await response.text());
+        showToast('Đã cập nhật trạng thái Bàn Giao Xe!');
+        loadRenterBookings();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+// Trả xe & Kiểm tra thiệt hại (Owner)
+async function returnVehicle(id) {
+    let lateFee = prompt("Nhập số tiền phụ phí trễ giờ (nếu không có, để trống hoặc nhập 0):", "0");
+    if (lateFee === null) return; // Hủy bỏ
+    
+    let damageFee = prompt("Nhập số tiền bồi thường thiệt hại (nếu không có, để trống hoặc nhập 0):", "0");
+    if (damageFee === null) return;
+
+    lateFee = parseFloat(lateFee) || 0;
+    damageFee = parseFloat(damageFee) || 0;
+
+    if (!confirm(`Xác nhận nhận lại xe với Phụ phí trễ giờ: ${formatVND(lateFee)} và Phí bồi thường: ${formatVND(damageFee)}?`)) return;
+
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/bookings/${id}/return?lateFee=${lateFee}&damageFee=${damageFee}`, {
+            method: 'POST'
+        });
+        if (!response.ok) throw new Error(await response.text());
+        showToast('Đã xác nhận nhận lại xe thành công!');
+        loadRenterBookings();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+// Hoàn thành đơn & Thanh toán (Renter)
+async function completeBooking(id) {
+    if (!confirm('Bạn có chắc chắn muốn thanh toán hóa đơn và hoàn thành chuyến đi này?')) return;
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/bookings/${id}/complete`, {
+            method: 'POST'
+        });
+        if (!response.ok) throw new Error(await response.text());
+        showToast('Đã thanh toán và hoàn thành chuyến đi! Cảm ơn bạn.');
+        loadRenterBookings();
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+// Phê duyệt đặt xe (Owner)
+async function approveBooking(bookingId) {
+    if (!confirm('Bạn có chắc chắn muốn duyệt đơn đặt xe này không?')) return;
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/bookings/${bookingId}/approve`, { method: 'POST' });
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(err || 'Lỗi khi duyệt đơn');
+        }
+        showToast('Đã duyệt đơn đặt xe thành công!');
+        loadRenterBookings();
+    } catch (err) { showToast(err.message, 'error'); }
+}
+
+// Từ chối đặt xe (Owner)
+async function rejectBooking(bookingId) {
+    if (!confirm('Bạn có chắc chắn muốn từ chối đơn đặt xe này không?')) return;
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/bookings/${bookingId}/reject`, { method: 'POST' });
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(err || 'Lỗi khi từ chối đơn');
+        }
+        showToast('Đã từ chối đơn đặt xe thành công!');
+        loadRenterBookings();
+    } catch (err) { showToast(err.message, 'error'); }
 }
 
 // --- LOGIC TRÊN TRANG CHI TIẾT ĐẶT XE (booking.html) ---

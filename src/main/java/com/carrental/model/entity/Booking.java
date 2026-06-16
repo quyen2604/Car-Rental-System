@@ -27,6 +27,11 @@ public class Booking {
 
     private double totalAmount;
 
+    private double refundAmount; // Số tiền hoàn lại khi hủy đơn
+
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date confirmedAt; // Thời điểm Owner xác nhận (để tính 12h tự hủy)
+
     @Enumerated(EnumType.STRING)
     private BookingStatus bookingStatus;
 
@@ -46,7 +51,7 @@ public class Booking {
         this.bookingStatus = BookingStatus.PENDING;
     }
 
-    //database
+    // database
     @PostLoad
     public void restoreStateFromEnum() {
         if (bookingStatus == null) {
