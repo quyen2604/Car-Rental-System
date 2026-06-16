@@ -9,4 +9,5 @@ public interface BookingState {
     void returnVehicle(Booking booking, double lateFee, double damageFee);
     void complete(Booking booking);
     void cancel(Booking booking);
+
 }

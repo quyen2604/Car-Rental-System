@@ -39,12 +39,13 @@ public class Booking {
     private Vehicle vehicle;
 
     @Transient
-    private BookingState state = new PendingState();
+    private BookingState state;
 
     public Booking() {
         this.state = new PendingState();
         this.bookingStatus = BookingStatus.PENDING;
     }
+
 
     @PostLoad
     public void restoreStateFromEnum() {
