@@ -38,7 +38,6 @@ public class VehicleService {
                 .findFirst()
                 .orElse(1); // Mặc định ID nếu hệ thống chưa khởi tạo kịp admin dữ liệu
 
-        // 🎯 Phát thông báo đến Admin phê duyệt qua Observer Pattern
         String msg = String.format("Chủ xe %s đã đăng ký xe mới: %s %s (Biển số: %s). Vui lòng phê duyệt ngay!",
                 vehicle.getOwner().getFullName(), vehicle.getBrand(), vehicle.getModel(), vehicle.getLicensePlate());
 

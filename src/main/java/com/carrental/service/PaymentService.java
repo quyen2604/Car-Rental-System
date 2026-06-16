@@ -38,7 +38,7 @@ public class PaymentService {
         booking.setBookingStatus(type == PaymentType.DEPOSIT ? BookingStatus.DEPOSIT_PAID : BookingStatus.COMPLETED);
         bookingRepository.save(booking);
 
-        // 🎯 Phát thông báo đến Chủ xe khi Renter nạp tiền thành công qua Observer Pattern
+        //  Phát thông báo đến Chủ xe khi Renter nạp tiền thành công qua Observer Pattern
         if (booking.getVehicle() != null && booking.getVehicle().getOwner() != null) {
             int ownerId = booking.getVehicle().getOwner().getUserId();
             String msg = String.format("Đơn hàng #%d cho xe %s %s đã được khách hàng thanh toán thành công số tiền %sđ (%s).",

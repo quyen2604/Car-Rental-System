@@ -92,10 +92,8 @@ public class BookingService {
             String msg = String.format("Bạn có một đơn đặt xe mới từ khách hàng %s cho chiếc xe %s %s (Mã đơn: #%d). Vui lòng vào kiểm tra xác nhận!",
                     renter.getFullName(), savedBooking.getVehicle().getBrand(), savedBooking.getVehicle().getModel(), savedBooking.getBookingId());
 
-            // 1. Vẫn giữ luồng Observer cũ của bạn để bắn sự kiện (nếu có)
             notificationSubject.notifyObservers(new NotificationEvent("BOOKING_CREATED", msg, ownerId));
 
-            // 2. CHÈN THÊM logic lưu thực tế xuống bảng notifications ở MySQL tại đây:
             try {
                 com.carrental.model.entity.Notification entityNoti = new com.carrental.model.entity.Notification();
                 entityNoti.setUserId(ownerId);
@@ -103,7 +101,7 @@ public class BookingService {
                 entityNoti.setMessage(msg);
                 entityNoti.setRead(false);
 
-                notificationRepository.save(entityNoti); // Thực hiện lưu xuống DB
+                notificationRepository.save(entityNoti);
                 System.out.println("-> [DATABASE] Đã lưu thông báo thành công cho Owner ID: " + ownerId);
             } catch (Exception e) {
                 System.err.println("Lỗi lưu thông báo xuống database: " + e.getMessage());
@@ -115,14 +113,12 @@ public class BookingService {
             String msg = String.format("Bạn có một đơn đặt xe mới từ khách hàng %s cho chiếc xe %s %s (Mã đơn: #%d). Vui lòng vào kiểm tra xác nhận!",
                     renter.getFullName(), savedBooking.getVehicle().getBrand(), savedBooking.getVehicle().getModel(), savedBooking.getBookingId());
 
-            // 1. Giữ nguyên luồng Observer cũ của bạn (nếu cần dùng ở nơi khác)
             notificationSubject.notifyObservers(new NotificationEvent("BOOKING_CREATED", msg, ownerId));
 
-            // 2. GỌI CHÍNH XÁC HÀM NÀY ĐỂ NÓ LƯU VÀO DATABASE MYSQL:
             try {
                 notificationSubject.sendNotificationToUser(
                         ownerId,
-                        "Có đơn đặt xe mới! 🚗",
+                        "Có đơn đặt xe mới! ",
                         msg,
                         "BOOKING_CREATED"
                 );
@@ -190,5 +186,29 @@ public class BookingService {
 
         return response;
     }
+    public List<BookingResponse> getBookingsByOwnerVehicles(int ownerId) {
+        List<Booking> bookings = bookingRepository.findBookingsByOwnerVehicles(ownerId);
 
+        return bookings.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+    @Transactional
+    public void approveBooking(String bookingIdStr) {
+        int id = Integer.parseInt(bookingIdStr);
+        Booking booking = bookingRepository.findByBookingId(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng với ID: " + id));
+
+        booking.setBookingStatus(BookingStatus.CONFIRMED);
+        bookingRepository.save(booking);
+    }
+    @Transactional
+    public void rejectBooking(String bookingIdStr) {
+        int id = Integer.parseInt(bookingIdStr);
+        Booking booking = bookingRepository.findByBookingId(id)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn hàng với ID: " + id));
+
+        booking.setBookingStatus(BookingStatus.CANCELLED);
+        bookingRepository.save(booking);
+    }
 }
