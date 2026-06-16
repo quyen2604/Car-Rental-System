@@ -7,7 +7,10 @@ import com.carrental.model.entity.Renter;
 import com.carrental.model.entity.User;
 import com.carrental.model.entity.Vehicle;
 import com.carrental.model.enums.BookingStatus;
+import com.carrental.notification.NotificationEvent;
+import com.carrental.notification.NotificationSubject;
 import com.carrental.repository.BookingRepository;
+import com.carrental.repository.NotificationRepository;
 import com.carrental.repository.UserRepository;
 import com.carrental.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +28,8 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final VehicleRepository vehicleRepository;
-
+    private NotificationRepository notificationRepository;
+    private final NotificationSubject notificationSubject;
     @Transactional
     public BookingResponse createBooking(BookingRequest request) {
         // 1. Kiểm tra ngày đặt
@@ -74,6 +78,59 @@ public class BookingService {
         booking.setVehicle(vehicle);
 
         Booking savedBooking = bookingRepository.save(booking);
+        if (savedBooking.getVehicle() != null && savedBooking.getVehicle().getOwner() != null) {
+            int ownerId = savedBooking.getVehicle().getOwner().getUserId();
+            String msg = String.format("Bạn có một đơn đặt xe mới từ khách hàng %s cho chiếc xe %s %s (Mã đơn: #%d). Vui lòng vào kiểm tra xác nhận!",
+                    renter.getFullName(), savedBooking.getVehicle().getBrand(), savedBooking.getVehicle().getModel(), savedBooking.getBookingId());
+
+            notificationSubject.notifyObservers(new NotificationEvent("BOOKING_CREATED", msg, ownerId));
+        }
+        savedBooking = bookingRepository.save(booking);
+
+        if (savedBooking.getVehicle() != null && savedBooking.getVehicle().getOwner() != null) {
+            int ownerId = savedBooking.getVehicle().getOwner().getUserId();
+            String msg = String.format("Bạn có một đơn đặt xe mới từ khách hàng %s cho chiếc xe %s %s (Mã đơn: #%d). Vui lòng vào kiểm tra xác nhận!",
+                    renter.getFullName(), savedBooking.getVehicle().getBrand(), savedBooking.getVehicle().getModel(), savedBooking.getBookingId());
+
+            // 1. Vẫn giữ luồng Observer cũ của bạn để bắn sự kiện (nếu có)
+            notificationSubject.notifyObservers(new NotificationEvent("BOOKING_CREATED", msg, ownerId));
+
+            // 2. CHÈN THÊM logic lưu thực tế xuống bảng notifications ở MySQL tại đây:
+            try {
+                com.carrental.model.entity.Notification entityNoti = new com.carrental.model.entity.Notification();
+                entityNoti.setUserId(ownerId);
+                entityNoti.setTitle("Có đơn đặt xe mới! 🚗");
+                entityNoti.setMessage(msg);
+                entityNoti.setRead(false);
+
+                notificationRepository.save(entityNoti); // Thực hiện lưu xuống DB
+                System.out.println("-> [DATABASE] Đã lưu thông báo thành công cho Owner ID: " + ownerId);
+            } catch (Exception e) {
+                System.err.println("Lỗi lưu thông báo xuống database: " + e.getMessage());
+            }
+        }
+        savedBooking = bookingRepository.save(booking);
+        if (savedBooking.getVehicle() != null && savedBooking.getVehicle().getOwner() != null) {
+            int ownerId = savedBooking.getVehicle().getOwner().getUserId();
+            String msg = String.format("Bạn có một đơn đặt xe mới từ khách hàng %s cho chiếc xe %s %s (Mã đơn: #%d). Vui lòng vào kiểm tra xác nhận!",
+                    renter.getFullName(), savedBooking.getVehicle().getBrand(), savedBooking.getVehicle().getModel(), savedBooking.getBookingId());
+
+            // 1. Giữ nguyên luồng Observer cũ của bạn (nếu cần dùng ở nơi khác)
+            notificationSubject.notifyObservers(new NotificationEvent("BOOKING_CREATED", msg, ownerId));
+
+            // 2. GỌI CHÍNH XÁC HÀM NÀY ĐỂ NÓ LƯU VÀO DATABASE MYSQL:
+            try {
+                notificationSubject.sendNotificationToUser(
+                        ownerId,
+                        "Có đơn đặt xe mới! 🚗",
+                        msg,
+                        "BOOKING_CREATED"
+                );
+                System.out.println("-> [THÀNH CÔNG] Đã kích hoạt lưu DB thông báo cho Owner: " + ownerId);
+            } catch (Exception e) {
+                System.err.println("Lỗi khi gọi sendNotificationToUser: " + e.getMessage());
+            }
+        }
         return mapToResponse(savedBooking);
     }
 
@@ -133,4 +190,5 @@ public class BookingService {
 
         return response;
     }
+
 }

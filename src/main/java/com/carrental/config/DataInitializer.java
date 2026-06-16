@@ -192,12 +192,15 @@ public class DataInitializer implements CommandLineRunner {
         // 4. TẠO DỮ LIỆU BOOKING
         Booking booking = new Booking();
         booking.setBookingDate(new Date());
-        booking.setStartDate(java.sql.Date.valueOf(LocalDate.of(2026, 7, 1)));
-        booking.setEndDate(java.sql.Date.valueOf(LocalDate.of(2026, 7, 5)));
+
+        java.time.ZoneId defaultZoneId = java.time.ZoneId.systemDefault();
+        booking.setStartDate(Date.from(LocalDate.of(2026, 7, 1).atStartOfDay(defaultZoneId).toInstant()));
+        booking.setEndDate(Date.from(LocalDate.of(2026, 7, 5).atStartOfDay(defaultZoneId).toInstant()));
+
         booking.setTotalAmount(2800000.0);
         booking.setBookingStatus(BookingStatus.CONFIRMED);
         booking.setRenter(renter);
-        booking.setVehicle(car2); // Gán xe bận lịch vào đơn đặt
+        booking.setVehicle(car2);
         bookingRepository.save(booking);
 
 

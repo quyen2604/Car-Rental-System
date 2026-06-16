@@ -182,21 +182,35 @@
     <!-- Scripts -->
     <script src="/js/app.js"></script>
     <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const vehicleId = urlParams.get('vehicleId');
+        // Chờ giao diện DOM nạp xong hoàn toàn
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Kiểm tra session người dùng để hiển thị khung thông tin tài khoản đặt xe
+            checkUserSession();
 
-        let vehicleData = null;
+            // 2. Lấy tham số vehicleId từ thanh địa chỉ URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const vehicleIdParam = urlParams.get('vehicleId');
 
-        if (!vehicleId) {
-            document.getElementById('vehicleDetailsBody').innerHTML = '<div class="status-message" style="color:var(--danger);">Không tìm thấy thông tin xe. Vui lòng quay lại trang chủ.</div>';
-        } else {
-            loadVehicleDetails(vehicleId);
-            
-            // Set ngày tối thiểu cho input date là ngày hôm nay
+            // 3. Đặt ngày tối thiểu cho input date là ngày hôm nay
             const todayStr = new Date().toISOString().split('T')[0];
-            document.getElementById('startDate').min = todayStr;
-            document.getElementById('endDate').min = todayStr;
-        }
+            const startDateInput = document.getElementById('startDate');
+            const endDateInput = document.getElementById('endDate');
+
+            if (startDateInput) startDateInput.min = todayStr;
+            if (endDateInput) endDateInput.min = todayStr;
+
+            // 4. Kiểm tra ID phương tiện và kích hoạt hàm load dữ liệu từ app.js
+            if (!vehicleIdParam) {
+                const detailsBody = document.getElementById('vehicleDetailsBody');
+                if (detailsBody) {
+                    detailsBody.innerHTML = '<div class="status-message" style="color:var(--danger);">❌ Không tìm thấy thông tin xe. Vui lòng quay lại trang chủ.</div>';
+                }
+            } else {
+                console.log("Đang kích hoạt load chi tiết cho xe ID:", vehicleIdParam);
+                // Gọi hàm load dữ liệu từ app.js sang
+                loadVehicleDetails(vehicleIdParam);
+            }
+        });
     </script>
 </body>
 </html>
