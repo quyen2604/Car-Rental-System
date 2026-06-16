@@ -28,16 +28,16 @@ public class SecurityConfig {
 
                 // 3. Cấu hình phân quyền đường dẫn
                 .authorizeHttpRequests(auth -> auth
-                        // Mở cửa hoàn toàn cho các API liên quan đến Authentication (Đăng ký, Đăng nhập)
+                        // Mở cửa hoàn toàn cho các API liên quan đến Authentication (Đăng ký, Đăng
+                        // nhập)
                         .requestMatchers("/api/auth/**").permitAll()
                         // Bất kỳ request nào khác tạm thời mở ra để chúng ta dễ test giao diện gốc
-                        .anyRequest().permitAll()
-                )
+                        .anyRequest().permitAll())
 
-                // 4. Đưa Session về chế độ STATELESS (Không dùng Session dính liền giao diện nữa)
+                // 4. Đưa Session về chế độ STATELESS (Không dùng Session dính liền giao diện
+                // nữa)
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                );
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
     }

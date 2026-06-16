@@ -59,7 +59,7 @@ public class DataInitializer implements CommandLineRunner {
         userRepository.save(owner);
 
         Renter renter = new Renter();
-        renter.setFullName("Cần Khách Thuê");
+        renter.setFullName("Cần Thuê Xe");
         renter.setEmail("renter@gmail.com");
         renter.setPhone("0909090909");
         renter.setPassword("123");
