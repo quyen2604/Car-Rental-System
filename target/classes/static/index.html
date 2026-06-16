@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Thuê Xe Tự Lái - CarRental</title>
+    <meta name="description" content="Hệ thống thuê xe tự lái chuyên nghiệp, nhanh chóng và uy tín hàng đầu Việt Nam.">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+    <!-- Toast Notification System -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Header / Navbar -->
+    <nav class="navbar">
+        <a href="/index.html" class="nav-brand">🚙 CarRental</a>
+        <div class="nav-links">
+            <span class="nav-link active" id="navSearch" onclick="switchTab('search')">Trang Chủ</span>
+            <span class="nav-link" id="navMyBookings" style="display:none;" onclick="switchTab('search'); switchTab('bookings')">Lịch Sử Đặt Xe</span>
+            
+            <!-- Auth Buttons (Toggle dynamically) -->
+            <button id="navAuthBtn" class="btn btn-outline-white" style="font-size: 0.85rem; padding: 0.5rem 1rem;">Đăng Nhập / Đăng Ký</button>
+            
+            <div id="navUserDropdown" style="display:none; align-items:center; gap:1rem;">
+                <span id="navUsername" style="font-size:0.95rem; font-weight:600;">👤 Khách Hàng</span>
+                <button id="btnLogout" class="btn btn-danger" style="font-size: 0.85rem; padding: 0.5rem 1rem;">Đăng Xuất</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Tab: Search -->
+    <main id="searchSection" class="bookings-section active">
+        <!-- Hero Section -->
+        <section class="hero-banner">
+            <h1 class="hero-title">Thuê Xe Giá Tốt</h1>
+            <p class="hero-subtitle">Tìm kiếm chiếc xe hoàn hảo cho chuyến đi tiếp theo của bạn từ hàng trăm mẫu xe đời mới đa dạng.</p>
+        </section>
+
+        <!-- Search Bar -->
+        <div class="search-wrapper">
+            <div class="search-box">
+                <div class="form-group">
+                    <label for="citySelect">📍 Địa điểm (Thành phố)</label>
+                    <select id="citySelect" class="form-select">
+                        <option value="Hanoi">Hà Nội</option>
+                        <option value="Ho Chi Minh">Hồ Chí Minh</option>
+                        <option value="Danang">Đà Nẵng</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="typeSelect">⚡ Loại phương tiện</label>
+                    <select id="typeSelect" class="form-select">
+                        <option value="CAR">Ô tô </option>
+                        <option value="MOTORBIKE">Xe máy </option>
+                    </select>
+                </div>
+                <button class="btn btn-primary btn-search" onclick="handleSearch()">🔍 Tìm Xe Ngay</button>
+            </div>
+        </div>
+
+        <!-- Search Results Grid -->
+        <div class="container">
+            <h2 class="section-title">✨ Danh Sách Xe Sẵn Sàng</h2>
+            <div id="carGrid" class="vehicles-grid">
+                <div class="status-message">Vui lòng chọn địa điểm và phương tiện để bắt đầu tìm kiếm!</div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Main Content Tab: Bookings History -->
+    <main id="bookingsSection" class="bookings-section container" style="margin-top: 3rem;">
+        <h2 class="section-title">📂 Lịch Sử Chuyến Đi Của Bạn</h2>
+        <div id="bookingList" class="booking-list">
+            <!-- Bookings load dynamically -->
+        </div>
+    </main>
+
+    <!-- Auth Modal (Login & Register) -->
+    <div id="authModal" class="modal-overlay">
+        <div class="modal-container">
+            <div class="modal-tabs">
+                <div id="tabLogin" class="modal-tab active" onclick="switchAuthTab('login')">Đăng Nhập</div>
+                <div id="tabRegister" class="modal-tab" onclick="switchAuthTab('register')">Đăng Ký Renter</div>
+            </div>
+            <div class="modal-body">
+                <!-- Login Form -->
+                <form id="loginForm" class="auth-form active" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label for="loginEmail">Email đăng nhập</label>
+                        <input type="email" id="loginEmail" class="form-input" placeholder="example@gmail.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="loginPassword">Mật khẩu</label>
+                        <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Đăng Nhập</button>
+                </form>
+
+                <!-- Register Form -->
+                <form id="registerForm" class="auth-form" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label for="regName">Họ và Tên</label>
+                        <input type="text" id="regName" class="form-input" placeholder="Nguyễn Văn A" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regEmail">Địa chỉ Email</label>
+                        <input type="email" id="regEmail" class="form-input" placeholder="your-email@gmail.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regPhone">Số điện thoại</label>
+                        <input type="tel" id="regPhone" class="form-input" placeholder="09xxxxxxxx" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regPassword">Mật khẩu</label>
+                        <input type="password" id="regPassword" class="form-input" placeholder="Tối thiểu 6 ký tự" minlength="3" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="regLicense">Số bằng lái xe</label>
+                        <input type="text" id="regLicense" class="form-input" placeholder="G1-xxxxxx" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Đăng Ký Tài Khoản</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/js/app.js"></script>
+</body>
+</html>

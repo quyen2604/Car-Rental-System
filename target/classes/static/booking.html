@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xác Nhận Đặt Xe - CarRental</title>
+    <meta name="description" content="Xác nhận ngày thuê xe và gửi yêu cầu đặt xe trực tiếp.">
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .booking-layout {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        @media (max-width: 768px) {
+            .booking-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+        .summary-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--slate-200);
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+        .summary-hero {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: var(--white);
+            padding: 2.5rem;
+            text-align: center;
+        }
+        .summary-body {
+            padding: 2rem;
+        }
+        .form-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--slate-200);
+            box-shadow: var(--shadow-lg);
+            padding: 2rem;
+            position: sticky;
+            top: 100px;
+        }
+        .price-breakdown {
+            background: var(--light);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            margin: 1.5rem 0;
+            border: 1px solid var(--slate-200);
+        }
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+            color: var(--slate-600);
+        }
+        .price-row.total {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1.5px dashed var(--slate-200);
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--primary);
+        }
+        .success-screen {
+            display: none;
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+        .success-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        .booking-id-badge {
+            display: inline-block;
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 700;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            margin: 1rem 0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Toast Notification System -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Header / Navbar -->
+    <nav class="navbar">
+        <a href="/index.html" class="nav-brand">🚙 CarRental</a>
+        <div class="nav-links">
+            <a href="/index.html" class="nav-link">Trang Chủ</a>
+            <div id="navUserDropdown" style="display:none; align-items:center; gap:1rem;">
+                <span id="navUsername" style="font-size:0.95rem; font-weight:600; color:var(--white);">👤 Khách Hàng</span>
+                <button id="btnLogout" class="btn btn-danger" style="font-size: 0.85rem; padding: 0.5rem 1rem;">Đăng Xuất</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <div class="container" style="margin-top: 2rem;">
+        <h2 class="section-title">🗓️ Hoàn Tất Đơn Đặt Xe</h2>
+
+        <div class="booking-layout">
+            <!-- Left Side: Vehicle Details -->
+            <div class="summary-card">
+                <div class="summary-hero">
+                    <div id="vehicleIcon" style="font-size: 5rem; margin-bottom: 1rem;">⏳</div>
+                    <div id="vehicleTypeBadge" style="display:inline-block; font-size:0.75rem; font-weight:700; padding:0.25rem 0.75rem; border-radius:50px; background:rgba(255,255,255,0.2); margin-bottom:0.5rem;">ĐANG TẢI...</div>
+                    <h3 id="vehicleName" style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.25rem;">--</h3>
+                    <div id="vehiclePriceHero" style="font-size: 1.5rem; font-weight: 700;">--</div>
+                </div>
+                <div class="summary-body" id="vehicleDetailsBody">
+                    <div class="status-message">Đang tải thông tin xe...</div>
+                </div>
+            </div>
+
+            <!-- Right Side: Booking Form -->
+            <div class="form-card">
+                <!-- Success State -->
+                <div id="successScreen" class="success-screen">
+                    <div class="success-icon">🎉</div>
+                    <h3 style="font-size: 1.5rem; font-weight: 800; color: var(--accent-dark);">Đặt Xe Thành Công!</h3>
+                    <p style="color: var(--slate-600); margin-top: 0.5rem;">Yêu cầu đặt xe của bạn đã được gửi thành công và đang chờ duyệt.</p>
+                    <div id="successBookingId" class="booking-id-badge">Mã đặt xe: #--</div>
+                    <div style="margin-top: 1.5rem;">
+                        <a href="/index.html" class="btn btn-primary">🔍 Tiếp Tục Tìm Xe</a>
+                    </div>
+                </div>
+
+                <!-- Form Content -->
+                <div id="formContent">
+                    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">📋 Thông Tin Thuê Xe</h3>
+                    
+                    <!-- Logged In User Info Summary -->
+                    <div id="loggedInUserSummary" style="display:none; background: var(--primary-light); border: 1.5px solid rgba(79,70,229,0.2); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem;">
+                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 0.25rem; text-transform: uppercase;">Tài Khoản Đặt Xe</div>
+                        <div style="font-size: 0.95rem; font-weight: 600;" id="userSummaryName">--</div>
+                        <div style="font-size: 0.85rem; color: var(--slate-600);" id="userSummaryEmail">--</div>
+                        <input type="hidden" id="renterId">
+                    </div>
+
+                    <!-- Date Pickers -->
+                    <div class="form-group" style="margin-bottom: 1.25rem;">
+                        <label for="startDate">📅 Ngày Nhận Xe</label>
+                        <input type="date" id="startDate" class="form-input" onchange="calculatePrice()" required>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1.25rem;">
+                        <label for="endDate">📅 Ngày Trả Xe</label>
+                        <input type="date" id="endDate" class="form-input" onchange="calculatePrice()" required>
+                    </div>
+
+                    <!-- Price breakdown -->
+                    <div id="priceBreakdown" class="price-breakdown" style="display:none;">
+                        <div class="price-row">
+                            <span>Đơn giá ngày</span>
+                            <span id="pricePerDayDisplay">--</span>
+                        </div>
+                        <div class="price-row">
+                            <span>Thời gian thuê</span>
+                            <span id="numDaysDisplay">0 ngày</span>
+                        </div>
+                        <div class="price-row total">
+                            <span>Tổng chi phí</span>
+                            <span id="totalPriceDisplay">--</span>
+                        </div>
+                    </div>
+
+                    <button id="btnSubmit" class="btn btn-primary" style="width:100%; height:48px;" onclick="submitBookingDirect()" disabled>
+                        <span>🔒</span> Vui Lòng Chọn Ngày
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/js/app.js"></script>
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const vehicleId = urlParams.get('vehicleId');
+
+        let vehicleData = null;
+
+        if (!vehicleId) {
+            document.getElementById('vehicleDetailsBody').innerHTML = '<div class="status-message" style="color:var(--danger);">Không tìm thấy thông tin xe. Vui lòng quay lại trang chủ.</div>';
+        } else {
+            loadVehicleDetails(vehicleId);
+            
+            // Set ngày tối thiểu cho input date là ngày hôm nay
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('startDate').min = todayStr;
+            document.getElementById('endDate').min = todayStr;
+        }
+    </script>
+</body>
+</html>
