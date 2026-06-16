@@ -3,6 +3,7 @@ package com.carrental.model.state;
 import com.carrental.model.entity.Booking;
 
 public class CompletedState implements BookingState {
+
     @Override
     public void confirm(Booking booking) {
         throw new IllegalStateException("Đơn đã hoàn thành.");

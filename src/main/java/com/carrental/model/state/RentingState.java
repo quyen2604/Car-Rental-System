@@ -4,6 +4,7 @@ import com.carrental.model.entity.Booking;
 import com.carrental.model.enums.BookingStatus;
 
 public class RentingState implements BookingState {
+
     @Override
     public void returnVehicle(Booking booking, double lateFee, double damageFee) {
         System.out.println("Trả xe thành công. Chờ thanh toán phần còn lại.");

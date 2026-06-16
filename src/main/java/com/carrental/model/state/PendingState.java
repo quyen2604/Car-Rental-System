@@ -4,6 +4,7 @@ import com.carrental.model.entity.Booking;
 import com.carrental.model.enums.BookingStatus;
 
 public class PendingState implements BookingState {
+
     @Override
     public void confirm(Booking booking) {
         System.out.println("Xác nhận booking thành công.");
