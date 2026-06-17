@@ -658,57 +658,65 @@ function calculatePrice() {
     }
 }
 
-// Đặt xe trực tiếp
 async function submitBookingDirect() {
+    // 1. Lấy dữ liệu từ giao diện
     const renterId = document.getElementById('renterId').value;
-    const startDate = document.getElementById('startDate').value;
-    const endDate = document.getElementById('endDate').value;
+    const startDate = document.getElementById('startDate').value; // Trình duyệt sẽ tự lấy chuỗi "yyyy-MM-dd"
+    const endDate = document.getElementById('endDate').value;     // Trình duyệt sẽ tự lấy chuỗi "yyyy-MM-dd"
 
+    // Kiểm tra xem đã chọn ngày chưa
     if (!startDate || !endDate) {
-        showToast('Vui lòng chọn ngày nhận và ngày trả xe!', 'error');
+        alert("Vui lòng chọn đầy đủ ngày nhận và ngày trả xe!");
         return;
     }
 
-    const btnSubmit = document.getElementById('btnSubmit');
-    if (btnSubmit) {
-        btnSubmit.disabled = true;
-        btnSubmit.innerText = '⌛ Đang xử lý đặt xe...';
-    }
+    // 2. Tính toán tiền cọc (Giả sử cọc 50% tổng chi phí - bạn có thể đổi logic này)
+    // Lưu ý: Hàm calculatePrice() của bạn phải gán giá trị tổng tiền vào đâu đó,
+    // ở đây mình tự tính lại dựa trên số ngày để gửi đi cho chắc chắn
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const timeDiff = end.getTime() - start.getTime();
+    let days = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    if (days <= 0) days = 1;
 
+    // Giả sử xe giá 700k/ngày, tiền cọc = (ngày * 700k) / 2
+    // Bạn nên lấy giá xe từ biến vehicleData có sẵn trong file của bạn
+    const pricePerDay = vehicleData ? vehicleData.pricePerDay : 700000;
+    const totalAmount = days * pricePerDay;
+    const depositAmount = totalAmount * 0.5; // Cọc 50%
+
+    // 3. Đóng gói dữ liệu thành chuẩn JSON
+    const requestBody = {
+        renterId: parseInt(renterId) || 1, // Fix cứng ID=1 nếu chưa làm chức năng đăng nhập
+        vehicleId: parseInt(vehicleId),    // Lấy từ URL (đã có sẵn trong html của bạn)
+        startDate: startDate,              // Gửi đi chuỗi "yyyy-MM-dd"
+        endDate: endDate,                  // Gửi đi chuỗi "yyyy-MM-dd"
+        deposit: depositAmount             // Gửi kèm tiền cọc
+    };
+
+    // 4. Gọi API gửi xuống Backend
     try {
-        const response = await fetch(`${window.API_BASE_URL}/bookings`, {
+        const response = await fetch('http://localhost:8080/api/bookings', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                renterId: parseInt(renterId),
-                vehicleId: vehicleData.vehicleId,
-                startDate: new Date(startDate),
-                endDate: new Date(endDate)
-            })
+            headers: {
+                'Content-Type': 'application/json' // BẮT BUỘC để báo cho server biết đây là JSON
+            },
+            body: JSON.stringify(requestBody)
         });
 
-        if (!response.ok) {
-            const err = await response.text();
-            throw new Error(err || 'Không thể tạo yêu cầu đặt xe.');
+        if (response.ok) {
+            const data = await response.json();
+            // Thành công: Hiển thị màn hình báo thành công
+            document.getElementById('formContent').style.display = 'none';
+            document.getElementById('successScreen').style.display = 'block';
+            document.getElementById('successBookingId').innerText = 'Mã đặt xe: #' + data.bookingId;
+        } else {
+            // Lỗi từ server trả về (400, 500...)
+            const errorMsg = await response.text();
+            alert("Lỗi đặt xe: " + errorMsg);
         }
-
-        const bookingRes = await response.json();
-        
-        // Hiển thị màn hình đặt xe thành công
-        const formContent = document.getElementById('formContent');
-        const successScreen = document.getElementById('successScreen');
-        const successBookingId = document.getElementById('successBookingId');
-
-        if (formContent) formContent.style.display = 'none';
-        if (successScreen) successScreen.style.display = 'block';
-        if (successBookingId) successBookingId.innerText = `Mã đặt xe: #${bookingRes.bookingId}`;
-        
-        showToast('Đặt xe thành công!');
-    } catch (err) {
-        showToast(err.message, 'error');
-        if (btnSubmit) {
-            btnSubmit.disabled = false;
-            btnSubmit.innerHTML = '<span>🔒</span> Xác nhận Đặt xe Ngay';
-        }
+    } catch (error) {
+        console.error("Lỗi kết nối:", error);
+        alert("Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại server Spring Boot.");
     }
 }
