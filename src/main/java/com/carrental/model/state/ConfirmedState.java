@@ -29,7 +29,7 @@ public class ConfirmedState implements BookingState {
     }
 
     @Override
-    public void returnVehicle(Booking booking, double lateFee, double damageFee) {
+    public void returnVehicle(Booking booking) {
         throw new IllegalStateException("Chưa nhận xe.");
     }
 

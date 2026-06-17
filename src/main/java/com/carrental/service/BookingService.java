@@ -161,8 +161,13 @@ public class BookingService {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
 
+        double totalExtraFee = lateFee + damageFee;
+        if (totalExtraFee > 0) {
+            booking.setTotalAmount(booking.getTotalAmount() + totalExtraFee);
+        }
+
         booking.restoreStateFromEnum();
-        booking.returnVehicle(lateFee, damageFee);
+        booking.returnVehicle();
 
         Booking savedBooking = bookingRepository.save(booking);
         return mapToResponse(savedBooking);
