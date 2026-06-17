@@ -20,11 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Observable;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class BookingService {
+public class BookingService extends Observable {
 
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
@@ -93,6 +94,13 @@ public class BookingService {
         booking.setTotalAmount(finalAmount);
 
         Booking savedBooking = bookingRepository.save(booking);
+        BookingResponse bookingResponse = mapToResponse(bookingRepository.save(booking));
+
+        if (booking.getVehicle() != null && booking.getVehicle().getOwner() != null) {
+            int realOwnerId = booking.getVehicle().getOwner().getUserId();
+
+            com.carrental.observer.OwnerObserver.triggerNotification(realOwnerId);
+        }
         return mapToResponse(savedBooking);
     }
 

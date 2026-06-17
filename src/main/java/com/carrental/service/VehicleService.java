@@ -11,11 +11,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Observable;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class VehicleService {
+public class VehicleService extends Observable {
 
     private final VehicleRepository vehicleRepository;
     private final UserRepository userRepository;
@@ -71,6 +72,10 @@ public class VehicleService {
         vehicle.setVehicleStatus(VehicleStatus.AVAILABLE);
         vehicle.setApprovalStatus(ApprovalStatus.PENDING);
 
+        Vehicle savedVehicle = vehicleRepository.save(vehicle); // Lưu và gán vào biến savedVehicle
+
+        setChanged();
+        notifyObservers(savedVehicle);
         return vehicleRepository.save(vehicle);
     }
 
@@ -97,4 +102,4 @@ public class VehicleService {
 
         return vehicleRepository.save(vehicle);
     }
-}
+}
