@@ -44,27 +44,38 @@ public class PaymentService {
         // Chọn chiến lược thanh toán (MOMO / CASH)
         PaymentStrategy strategy = resolveStrategy(req.getMethod());
 
-        // Tạo bản ghi thanh toán trạng thái PENDING trước
+        // Tạo bản ghi thanh toán trạng thái PENDING trước và lưu để lấy paymentId
         Payment payment = createPaymentRecord(booking, req.getAmount(),
                 PaymentType.DEPOSIT, req.getMethod(), req.getNote());
+        payment = paymentRepository.save(payment);
 
         try {
             // Thực thi thanh toán qua Strategy
-            strategy.processPay(req.getAmount());
+            String resultUrl = strategy.processPay(req.getAmount(), String.valueOf(payment.getPaymentId()), "Cọc xe booking " + booking.getBookingId());
 
-            // Cập nhật trạng thái SUCCESS
-            payment.setPaymentStatus(PaymentStatus.SUCCESS);
-            payment.setTransactionId(generateTransactionId("DEP", booking.getBookingId()));
-            System.out.println("✅ [DEPOSIT] Cọc tiền thành công - Booking #" + booking.getBookingId()
-                    + " | Số tiền: " + req.getAmount() + " VNĐ | Phương thức: " + req.getMethod());
+            if ("CASH".equalsIgnoreCase(req.getMethod())) {
+                // Cập nhật trạng thái SUCCESS
+                payment.setPaymentStatus(PaymentStatus.SUCCESS);
+                payment.setTransactionId(generateTransactionId("DEP", booking.getBookingId()));
+                System.out.println("✅ [DEPOSIT] Cọc tiền thành công - Booking #" + booking.getBookingId()
+                        + " | Số tiền: " + req.getAmount() + " VNĐ | Phương thức: " + req.getMethod());
+            } else {
+                // MoMo: Keep status as PENDING
+                System.out.println("📱 [DEPOSIT] Đã tạo link MoMo - Booking #" + booking.getBookingId());
+            }
+
+            Payment saved = paymentRepository.save(payment);
+            PaymentResponse res = mapToResponse(saved);
+            if (!"CASH".equalsIgnoreCase(req.getMethod())) {
+                res.setPayUrl(resultUrl);
+            }
+            return res;
         } catch (Exception e) {
             payment.setPaymentStatus(PaymentStatus.FAILED);
             paymentRepository.save(payment);
             throw new RuntimeException("Thanh toán cọc thất bại: " + e.getMessage());
         }
 
-        Payment saved = paymentRepository.save(payment);
-        return mapToResponse(saved);
     }
 
     // =========================================================
@@ -84,22 +95,32 @@ public class PaymentService {
 
         Payment payment = createPaymentRecord(booking, req.getAmount(),
                 PaymentType.FINAL, req.getMethod(), req.getNote());
+        payment = paymentRepository.save(payment);
 
         try {
-            strategy.processPay(req.getAmount());
+            String resultUrl = strategy.processPay(req.getAmount(), String.valueOf(payment.getPaymentId()), "Thanh toán tổng booking " + booking.getBookingId());
 
-            payment.setPaymentStatus(PaymentStatus.SUCCESS);
-            payment.setTransactionId(generateTransactionId("FIN", booking.getBookingId()));
-            System.out.println("✅ [FINAL] Thanh toán tổng thành công - Booking #" + booking.getBookingId()
-                    + " | Số tiền: " + req.getAmount() + " VNĐ | Phương thức: " + req.getMethod());
+            if ("CASH".equalsIgnoreCase(req.getMethod())) {
+                payment.setPaymentStatus(PaymentStatus.SUCCESS);
+                payment.setTransactionId(generateTransactionId("FIN", booking.getBookingId()));
+                System.out.println("✅ [FINAL] Thanh toán tổng thành công - Booking #" + booking.getBookingId()
+                        + " | Số tiền: " + req.getAmount() + " VNĐ | Phương thức: " + req.getMethod());
+            } else {
+                System.out.println("📱 [FINAL] Đã tạo link MoMo - Booking #" + booking.getBookingId());
+            }
+
+            Payment saved = paymentRepository.save(payment);
+            PaymentResponse res = mapToResponse(saved);
+            if (!"CASH".equalsIgnoreCase(req.getMethod())) {
+                res.setPayUrl(resultUrl);
+            }
+            return res;
         } catch (Exception e) {
             payment.setPaymentStatus(PaymentStatus.FAILED);
             paymentRepository.save(payment);
             throw new RuntimeException("Thanh toán tổng thất bại: " + e.getMessage());
         }
 
-        Payment saved = paymentRepository.save(payment);
-        return mapToResponse(saved);
     }
 
     // =========================================================
@@ -112,7 +133,7 @@ public class PaymentService {
         }
 
         PaymentStrategy strategy = resolveStrategy(method);
-        strategy.refund(amount);
+        strategy.refund(amount, String.valueOf(bookingId));
         System.out.println("🔄 Đã hoàn tiền " + amount + " VNĐ cho Booking ID: " + bookingId
                 + " qua " + method);
     }
@@ -126,7 +147,7 @@ public class PaymentService {
             throw new IllegalArgumentException("Số tiền thanh toán phải lớn hơn 0.");
         }
         PaymentStrategy strategy = resolveStrategy(method);
-        strategy.processPay(amount);
+        strategy.processPay(amount, "LEGACY", "Thanh toán legacy");
         System.out.println("✅ Đã xử lý thanh toán loại " + paymentType + " bằng " + method.toUpperCase());
     }
 

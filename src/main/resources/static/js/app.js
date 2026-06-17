@@ -514,6 +514,11 @@ async function submitDepositPayment() {
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
 
+        if (data.payUrl) {
+            window.location.href = data.payUrl;
+            return;
+        }
+
         showPaymentResult('dep', true,
             '✅ Thanh Toán Thành Công!',
             `Tiền cọc ${formatVND(amount)} đã được xác nhận qua ${method}.\nĐơn đặt xe đang chờ bàn giao.`,
@@ -541,6 +546,11 @@ async function submitFinalPayment() {
 
         if (!res.ok) throw new Error(await res.text());
         const data = await res.json();
+
+        if (data.payUrl) {
+            window.location.href = data.payUrl;
+            return;
+        }
 
         showPaymentResult('fin', true,
             '🎉 Chuyến Đi Hoàn Thành!',
