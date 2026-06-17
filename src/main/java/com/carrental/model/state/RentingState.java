@@ -5,13 +5,8 @@ import com.carrental.model.enums.BookingStatus;
 
 public class RentingState implements BookingState {
     @Override
-    public void returnVehicle(Booking booking, double lateFee, double damageFee) {
-        System.out.println("Trả xe thành công. Chờ thanh toán phần còn lại.");
-        double totalFee = lateFee + damageFee;
-        if (totalFee > 0) {
-            booking.setTotalAmount(booking.getTotalAmount() + totalFee);
-            System.out.println("Đã cộng thêm phụ phí: " + totalFee);
-        }
+    public void returnVehicle(Booking booking) {
+        System.out.println("Trả xe thành công. Đã chuyển sang trạng thái RETURNED.");
         booking.setState(new ReturnedState());
         booking.setBookingStatus(BookingStatus.RETURNED);
     }

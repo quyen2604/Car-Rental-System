@@ -109,8 +109,8 @@ public class Booking {
         getState().pickUpVehicle(this);
     }
 
-    public void returnVehicle(double lateFee, double damageFee) {
-        getState().returnVehicle(this, lateFee, damageFee);
+    public void returnVehicle() {
+        getState().returnVehicle(this);
     }
 
     public void complete() {

@@ -19,7 +19,7 @@ public class CancelledState implements BookingState {
     }
 
     @Override
-    public void returnVehicle(Booking booking, double lateFee, double damageFee) {
+    public void returnVehicle(Booking booking) {
         throw new IllegalStateException("Đơn đã bị hủy.");
     }
     @Override
