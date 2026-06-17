@@ -1040,3 +1040,27 @@ a {
         font-size: 1.6rem;
     }
 }
+
+/* ============================================================
+   OWNER: Form đăng ký xe
+============================================================ */
+.vehicle-register-card {
+    background: var(--card-bg, #1e2a3a);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+}
+
+.register-vehicle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+}
+
+.register-vehicle-grid textarea.form-input {
+    font-family: inherit;
+    padding: 0.75rem 1rem;
+    line-height: 1.5;
+}

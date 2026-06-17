@@ -44,23 +44,27 @@ function checkUserSession() {
     const userDropdown = document.getElementById('navUserDropdown');
     const usernameDisplay = document.getElementById('navUsername');
     const myBookingsLink = document.getElementById('navMyBookings');
+    const ownerVehiclesLink = document.getElementById('navOwnerVehicles');
+    const adminPanelLink = document.getElementById('navAdminPanel');
 
     if (userStr) {
         const user = JSON.parse(userStr);
         if (authBtn) authBtn.style.display = 'none';
         if (userDropdown) userDropdown.style.display = 'flex';
         if (usernameDisplay) usernameDisplay.innerText = `👤 ${user.fullName}`;
-        if (myBookingsLink) {
-            myBookingsLink.style.display = 'inline-block';
-            const isOwner = (user.licenseNumber === undefined || user.licenseNumber === null);
-            if (isOwner) {
-                myBookingsLink.innerText = 'Quản Lý Đơn Thuê';
-            }
-        }
+
+        const isAdmin = user.dtype === 'Admin' || (user.email && user.email.includes('admin'));
+        const isOwner = !user.licenseNumber && !isAdmin;
+
+        if (myBookingsLink) myBookingsLink.style.display = isAdmin ? 'none' : 'inline-block';
+        if (ownerVehiclesLink) ownerVehiclesLink.style.display = isOwner ? 'inline-block' : 'none';
+        if (adminPanelLink) adminPanelLink.style.display = isAdmin ? 'inline-block' : 'none';
     } else {
         if (authBtn) authBtn.style.display = 'inline-flex';
         if (userDropdown) userDropdown.style.display = 'none';
         if (myBookingsLink) myBookingsLink.style.display = 'none';
+        if (ownerVehiclesLink) ownerVehiclesLink.style.display = 'none';
+        if (adminPanelLink) adminPanelLink.style.display = 'none';
     }
 }
 
@@ -276,24 +280,38 @@ function bookVehicle(vehicleId) {
 
 // Quản lý chuyển đổi Tab trên Trang chủ
 function switchTab(tab) {
-    const searchSec = document.getElementById('searchSection');
-    const bookingsSec = document.getElementById('bookingsSection');
-    const navSearch = document.getElementById('navSearch');
-    const navMyBookings = document.getElementById('navMyBookings');
+    const allSections = ['searchSection', 'bookingsSection', 'ownerVehiclesSection', 'adminPanelSection'];
+    const allNavLinks = ['navSearch', 'navMyBookings', 'navOwnerVehicles', 'navAdminPanel'];
+
+    // Ẩn tất cả sections
+    allSections.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('active');
+    });
+    // Bỏ active trên tất cả nav links
+    allNavLinks.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('active');
+    });
 
     if (tab === 'search') {
-        if (searchSec) searchSec.classList.add('active');
-        if (bookingsSec) bookingsSec.classList.remove('active');
-        if (navSearch) navSearch.classList.add('active');
-        if (navMyBookings) navMyBookings.classList.remove('active');
-    } else {
-        if (searchSec) searchSec.classList.remove('active');
-        if (bookingsSec) bookingsSec.classList.add('active');
-        if (navSearch) navSearch.classList.remove('active');
-        if (navMyBookings) navMyBookings.classList.add('active');
+        document.getElementById('searchSection')?.classList.add('active');
+        document.getElementById('navSearch')?.classList.add('active');
+    } else if (tab === 'bookings') {
+        document.getElementById('bookingsSection')?.classList.add('active');
+        document.getElementById('navMyBookings')?.classList.add('active');
         loadRenterBookings();
+    } else if (tab === 'owner-vehicles') {
+        document.getElementById('ownerVehiclesSection')?.classList.add('active');
+        document.getElementById('navOwnerVehicles')?.classList.add('active');
+        loadOwnerVehicles();
+    } else if (tab === 'admin-panel') {
+        document.getElementById('adminPanelSection')?.classList.add('active');
+        document.getElementById('navAdminPanel')?.classList.add('active');
+        loadPendingVehicles();
     }
 }
+
 
 async function loadRenterBookings() {
     const userStr = localStorage.getItem('user');
@@ -906,3 +924,195 @@ async function submitBookingDirect() {
         alert("Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại server Spring Boot.");
     }
 }
+
+// ============================================================
+// OWNER: ĐĂNG KÝ XE & QUẢN LÝ XE
+// ============================================================
+
+// Ẩn/hiện trường Số chỗ vs Dung tích tùy loại xe
+function toggleVehicleTypeFields() {
+    const type = document.getElementById('vehType')?.value;
+    const seatField = document.getElementById('fieldSeatNumber');
+    const engineField = document.getElementById('fieldEngineCapacity');
+    if (!seatField || !engineField) return;
+
+    if (type === 'MOTORBIKE') {
+        seatField.style.display = 'none';
+        engineField.style.display = 'block';
+    } else {
+        seatField.style.display = 'block';
+        engineField.style.display = 'none';
+    }
+}
+
+// Xử lý submit form đăng ký xe
+async function handleRegisterVehicle(e) {
+    e.preventDefault();
+    const userStr = localStorage.getItem('user');
+    if (!userStr) {
+        showToast('Vui lòng đăng nhập để đăng ký xe!', 'error');
+        return;
+    }
+    const user = JSON.parse(userStr);
+
+    const type = document.getElementById('vehType').value;
+    const requestBody = {
+        type,
+        brand: document.getElementById('vehBrand').value,
+        model: document.getElementById('vehModel').value,
+        licensePlate: document.getElementById('vehPlate').value,
+        pricePerDay: parseFloat(document.getElementById('vehPrice').value),
+        description: document.getElementById('vehDesc').value,
+        seatNumber: type === 'CAR' ? parseInt(document.getElementById('vehSeat').value || '5') : 0,
+        engineCapacity: type === 'MOTORBIKE' ? parseInt(document.getElementById('vehEngine').value || '125') : 0,
+        ownerId: user.userId,
+        city: document.getElementById('vehCity').value,
+        district: document.getElementById('vehDistrict').value,
+        addressDetail: document.getElementById('vehAddress').value
+    };
+
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/vehicles/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(err || 'Đăng ký xe thất bại!');
+        }
+
+        showToast('🚀 Đăng ký xe thành công! Đang chờ Admin duyệt.');
+        document.getElementById('registerVehicleForm').reset();
+        toggleVehicleTypeFields(); // Reset hiển thị field
+        loadOwnerVehicles(); // Reload danh sách xe
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}
+
+// Tải danh sách xe của Owner
+async function loadOwnerVehicles() {
+    const userStr = localStorage.getItem('user');
+    const list = document.getElementById('ownerVehicleList');
+    if (!list || !userStr) return;
+
+    const user = JSON.parse(userStr);
+    list.innerHTML = '<div class="status-message">🔄 Đang tải...</div>';
+
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/vehicles/owner/${user.userId}`);
+        if (!response.ok) throw new Error('Không thể tải danh sách xe.');
+        const vehicles = await response.json();
+
+        if (vehicles.length === 0) {
+            list.innerHTML = '<div class="status-message">Bạn chưa đăng ký xe nào. Hãy điền form bên trên để bắt đầu!</div>';
+            return;
+        }
+
+        list.innerHTML = '';
+        vehicles.forEach(v => {
+            const approvalBadge = {
+                'PENDING': '<span style="background:#f59e0b; color:#fff; padding:3px 10px; border-radius:20px; font-size:0.8rem;">⏳ Chờ duyệt</span>',
+                'APPROVED': '<span style="background:#10b981; color:#fff; padding:3px 10px; border-radius:20px; font-size:0.8rem;">✅ Đã duyệt</span>',
+                'REJECTED': '<span style="background:#ef4444; color:#fff; padding:3px 10px; border-radius:20px; font-size:0.8rem;">❌ Từ chối</span>'
+            }[v.approvalStatus] || v.approvalStatus;
+
+            const icon = v.seatNumber ? '🚗' : '🛵';
+            const detail = v.seatNumber ? `${v.seatNumber} chỗ` : `${v.engineCapacity} CC`;
+
+            const item = document.createElement('div');
+            item.className = 'booking-item';
+            item.innerHTML = `
+                <div class="booking-avatar">${icon}</div>
+                <div class="booking-details">
+                    <h4>${v.brand} ${v.model}</h4>
+                    <p>🔢 Biển số: <strong>${v.licensePlate}</strong> &nbsp;|&nbsp; ${icon} ${detail}</p>
+                    <p>💰 Giá: <strong>${formatVND(v.pricePerDay)}/ngày</strong></p>
+                    <p>📍 Địa điểm: ${v.location ? v.location.city : '--'}</p>
+                </div>
+                <div class="booking-status">${approvalBadge}</div>
+            `;
+            list.appendChild(item);
+        });
+    } catch (err) {
+        list.innerHTML = `<div class="status-message">❌ ${err.message}</div>`;
+    }
+}
+
+// ============================================================
+// ADMIN: DUYỆT XE
+// ============================================================
+
+// Tải danh sách xe đang PENDING
+async function loadPendingVehicles() {
+    const list = document.getElementById('pendingVehicleList');
+    if (!list) return;
+    list.innerHTML = '<div class="status-message">🔄 Đang tải...</div>';
+
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/vehicles/pending`);
+        if (!response.ok) throw new Error('Không thể tải danh sách chờ duyệt.');
+        const vehicles = await response.json();
+
+        if (vehicles.length === 0) {
+            list.innerHTML = '<div class="status-message">✅ Không có xe nào đang chờ duyệt!</div>';
+            return;
+        }
+
+        list.innerHTML = '';
+        vehicles.forEach(v => {
+            const icon = v.seatNumber ? '🚗' : '🛵';
+            const detail = v.seatNumber ? `${v.seatNumber} chỗ ngồi` : `${v.engineCapacity} CC`;
+
+            const item = document.createElement('div');
+            item.className = 'booking-item';
+            item.style.alignItems = 'flex-start';
+            item.innerHTML = `
+                <div class="booking-avatar">${icon}</div>
+                <div class="booking-details" style="flex:1;">
+                    <h4>${v.brand} ${v.model} <span style="background:#f59e0b; color:#fff; padding:2px 8px; border-radius:12px; font-size:0.75rem; margin-left:6px;">⏳ Chờ duyệt</span></h4>
+                    <p>🔢 Biển số: <strong>${v.licensePlate}</strong> &nbsp;|&nbsp; ${icon} ${detail}</p>
+                    <p>💰 Giá đề nghị: <strong>${formatVND(v.pricePerDay)}/ngày</strong></p>
+                    <p>📍 Địa điểm: ${v.location ? `${v.location.district}, ${v.location.city}` : '--'}</p>
+                    <p>📝 Mô tả: ${v.description || '(Không có)'}</p>
+                    <p>👤 Chủ xe ID: <strong>${v.owner ? v.owner.userId : '--'}</strong> — ${v.owner ? v.owner.fullName : ''}</p>
+                    <div style="margin-top: 0.75rem; display:flex; gap: 0.75rem;">
+                        <button class="btn btn-primary" onclick="handleApproveVehicle(${v.vehicleId}, 'APPROVED')" style="padding: 0.5rem 1.25rem;">
+                            ✅ Duyệt Xe
+                        </button>
+                        <button class="btn btn-danger" onclick="handleApproveVehicle(${v.vehicleId}, 'REJECTED')" style="padding: 0.5rem 1.25rem;">
+                            ❌ Từ Chối
+                        </button>
+                    </div>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+    } catch (err) {
+        list.innerHTML = `<div class="status-message">❌ ${err.message}</div>`;
+    }
+}
+
+// Duyệt hoặc từ chối xe
+async function handleApproveVehicle(vehicleId, status) {
+    const action = status === 'APPROVED' ? 'duyệt' : 'từ chối';
+    if (!confirm(`Bạn có chắc muốn ${action} xe #${vehicleId}?`)) return;
+
+    try {
+        const response = await fetch(`${window.API_BASE_URL}/vehicles/${vehicleId}/approve?status=${status}`, {
+            method: 'PUT'
+        });
+
+        if (!response.ok) {
+            const err = await response.text();
+            throw new Error(err);
+        }
+
+        showToast(status === 'APPROVED' ? `✅ Đã duyệt xe #${vehicleId}!` : `❌ Đã từ chối xe #${vehicleId}!`);
+        loadPendingVehicles(); // Reload lại danh sách
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+}

@@ -17,7 +17,9 @@
         <a href="/index.html" class="nav-brand">🚙 CarRental</a>
         <div class="nav-links">
             <span class="nav-link active" id="navSearch" onclick="switchTab('search')">Trang Chủ</span>
-            <span class="nav-link" id="navMyBookings" style="display:none;" onclick="switchTab('search'); switchTab('bookings')">Lịch Sử Đặt Xe</span>
+            <span class="nav-link" id="navMyBookings" style="display:none;" onclick="switchTab('bookings')">Lịch Sử Đặt Xe</span>
+            <span class="nav-link" id="navOwnerVehicles" style="display:none;" onclick="switchTab('owner-vehicles')">🚗 Xe Của Tôi</span>
+            <span class="nav-link" id="navAdminPanel" style="display:none;" onclick="switchTab('admin-panel')">🛡️ Duyệt Xe</span>
             
             <!-- Auth Buttons (Toggle dynamically) -->
             <button id="navAuthBtn" class="btn btn-outline-white" style="font-size: 0.85rem; padding: 0.5rem 1rem;">Đăng Nhập / Đăng Ký</button>
@@ -73,6 +75,104 @@
         <h2 id="bookingsSectionTitle" class="section-title">📂 Lịch Sử Chuyến Đi Của Bạn</h2>
         <div id="bookingList" class="booking-list">
             <!-- Bookings load dynamically -->
+        </div>
+    </main>
+
+    <!-- ============================================================
+         SECTION: OWNER - ĐĂNG KÝ XE & DANH SÁCH XE CỦA TÔI
+    ============================================================ -->
+    <main id="ownerVehiclesSection" class="bookings-section container" style="margin-top: 3rem;">
+        <h2 class="section-title">🚗 Quản Lý Xe Của Tôi</h2>
+
+        <!-- Form Đăng ký xe mới -->
+        <div class="vehicle-register-card">
+            <h3 style="margin-bottom: 1.5rem; color: var(--primary);">➕ Đăng Ký Xe Mới</h3>
+            <form id="registerVehicleForm" onsubmit="handleRegisterVehicle(event)">
+                <div class="register-vehicle-grid">
+                    <!-- Loại xe -->
+                    <div class="form-group">
+                        <label for="vehType">⚡ Loại xe</label>
+                        <select id="vehType" class="form-select" onchange="toggleVehicleTypeFields()" required>
+                            <option value="CAR">🚗 Ô tô</option>
+                            <option value="MOTORBIKE">🛵 Xe máy</option>
+                        </select>
+                    </div>
+                    <!-- Hãng xe -->
+                    <div class="form-group">
+                        <label for="vehBrand">🏷️ Hãng xe</label>
+                        <input type="text" id="vehBrand" class="form-input" placeholder="Toyota, Honda, Yamaha..." required>
+                    </div>
+                    <!-- Mẫu xe -->
+                    <div class="form-group">
+                        <label for="vehModel">🚘 Mẫu xe / Đời xe</label>
+                        <input type="text" id="vehModel" class="form-input" placeholder="Camry 2023, Air Blade 2022..." required>
+                    </div>
+                    <!-- Biển số -->
+                    <div class="form-group">
+                        <label for="vehPlate">🔢 Biển số xe</label>
+                        <input type="text" id="vehPlate" class="form-input" placeholder="30H-55555" required>
+                    </div>
+                    <!-- Giá thuê -->
+                    <div class="form-group">
+                        <label for="vehPrice">💰 Giá thuê (đ/ngày)</label>
+                        <input type="number" id="vehPrice" class="form-input" placeholder="700000" min="50000" required>
+                    </div>
+                    <!-- Số chỗ (chỉ hiện khi CAR) -->
+                    <div class="form-group" id="fieldSeatNumber">
+                        <label for="vehSeat">🪑 Số chỗ ngồi</label>
+                        <input type="number" id="vehSeat" class="form-input" placeholder="5" min="2" max="16">
+                    </div>
+                    <!-- Dung tích (chỉ hiện khi MOTORBIKE) -->
+                    <div class="form-group" id="fieldEngineCapacity" style="display:none;">
+                        <label for="vehEngine">⚙️ Dung tích động cơ (CC)</label>
+                        <input type="number" id="vehEngine" class="form-input" placeholder="150" min="50">
+                    </div>
+                    <!-- Thành phố -->
+                    <div class="form-group">
+                        <label for="vehCity">📍 Thành phố</label>
+                        <select id="vehCity" class="form-select" required>
+                            <option value="Hanoi">Hà Nội</option>
+                            <option value="Ho Chi Minh">Hồ Chí Minh</option>
+                            <option value="Danang">Đà Nẵng</option>
+                        </select>
+                    </div>
+                    <!-- Quận/Huyện -->
+                    <div class="form-group">
+                        <label for="vehDistrict">🏙️ Quận / Huyện</label>
+                        <input type="text" id="vehDistrict" class="form-input" placeholder="Cầu Giấy, Hoàn Kiếm..." required>
+                    </div>
+                    <!-- Mô tả (full width) -->
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label for="vehDesc">📝 Mô tả xe</label>
+                        <textarea id="vehDesc" class="form-input" rows="3" placeholder="Mô tả tình trạng xe, tiện ích, ghi chú thêm..." style="resize:vertical;"></textarea>
+                    </div>
+                    <!-- Địa chỉ cụ thể (full width) -->
+                    <div class="form-group" style="grid-column: 1 / -1;">
+                        <label for="vehAddress">🗺️ Địa chỉ nhận xe chi tiết</label>
+                        <input type="text" id="vehAddress" class="form-input" placeholder="Số 1 Duy Tân, Cầu Giấy..." required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%; margin-top:1rem; padding: 1rem; font-size:1rem;">
+                    🚀 Đăng Ký Xe Ngay
+                </button>
+            </form>
+        </div>
+
+        <!-- Danh sách xe đã đăng ký -->
+        <h3 style="margin: 2rem 0 1rem; color: var(--primary);">📋 Danh Sách Xe Đã Đăng Ký</h3>
+        <div id="ownerVehicleList" class="booking-list">
+            <div class="status-message">🔄 Đang tải danh sách xe...</div>
+        </div>
+    </main>
+
+    <!-- ============================================================
+         SECTION: ADMIN - DUYỆT XE
+    ============================================================ -->
+    <main id="adminPanelSection" class="bookings-section container" style="margin-top: 3rem;">
+        <h2 class="section-title">🛡️ Bảng Duyệt Xe (Admin)</h2>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Danh sách xe đang chờ duyệt từ các chủ xe. Hãy xem xét kỹ thông tin trước khi quyết định.</p>
+        <div id="pendingVehicleList" class="booking-list">
+            <div class="status-message">🔄 Đang tải danh sách chờ duyệt...</div>
         </div>
     </main>
 
