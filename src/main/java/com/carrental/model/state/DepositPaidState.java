@@ -1,6 +1,6 @@
 package com.carrental.model.state;
 
-import com.carrental.model.entity.Booking;
+import com.carrental.model.entity.Decorator.Booking;
 import com.carrental.model.enums.BookingStatus;
 
 public class DepositPaidState implements BookingState {

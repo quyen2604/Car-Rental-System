@@ -2,11 +2,15 @@ package com.carrental.service;
 
 import com.carrental.DTO.BookingRequest;
 import com.carrental.DTO.BookingResponse;
-import com.carrental.model.entity.Booking;
+import com.carrental.model.entity.Coupon;
+import com.carrental.model.entity.Decorator.Booking;
+import com.carrental.model.entity.Decorator.BookingOrder;
+import com.carrental.model.entity.Decorator.CouponDecorator;
 import com.carrental.model.entity.Renter;
 import com.carrental.model.entity.Vehicle;
 import com.carrental.model.enums.BookingStatus;
 import com.carrental.repository.BookingRepository;
+import com.carrental.repository.CouponRepository;
 import com.carrental.repository.UserRepository;
 import com.carrental.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +29,8 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final VehicleRepository vehicleRepository;
+    private final CouponRepository couponRepository;
+
 
     @Transactional
     public BookingResponse createBooking(BookingRequest request) {
@@ -67,6 +73,24 @@ public class BookingService {
         booking.setBookingStatus(BookingStatus.PENDING);
         booking.setRenter(renter);
         booking.setVehicle(vehicle);
+        BookingOrder finalOrder = booking;
+
+
+        if (request.getCouponCode() != null && !request.getCouponCode().trim().isEmpty()) {
+            // Tìm coupon trong database thông qua Repo
+            Coupon coupon = couponRepository.findByCode(request.getCouponCode().trim());
+
+            if (coupon != null) {
+                // Bọc đối tượng booking bằng CouponDecorator để tính số tiền sau khi giảm giá %
+                finalOrder = new CouponDecorator(finalOrder, coupon);
+            } else {
+                throw new IllegalArgumentException("Mã giảm giá không tồn tại hoặc đã hết hạn.");
+            }
+        }
+
+        // --- BƯỚC 4: LẤY SỐ TIỀN CUỐI CÙNG TỪ DECORATOR VÀ LƯU LẠI ---
+        double finalAmount = finalOrder.calculateTotal();
+        booking.setTotalAmount(finalAmount);
 
         Booking savedBooking = bookingRepository.save(booking);
         return mapToResponse(savedBooking);

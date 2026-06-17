@@ -1,5 +1,6 @@
 package com.carrental.model.entity;
 
+import com.carrental.model.entity.Decorator.Booking;
 import com.carrental.model.enums.PaymentStatus;
 import com.carrental.model.enums.PaymentType;
 import jakarta.persistence.*;

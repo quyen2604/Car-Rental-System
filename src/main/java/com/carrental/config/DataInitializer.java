@@ -1,5 +1,6 @@
 package com.carrental.config;
 import com.carrental.model.entity.*;
+import com.carrental.model.entity.Decorator.Booking;
 import com.carrental.model.enums.ApprovalStatus;
 import com.carrental.model.enums.BookingStatus;
 import com.carrental.model.enums.PaymentType;

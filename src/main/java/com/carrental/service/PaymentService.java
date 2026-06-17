@@ -2,7 +2,7 @@ package com.carrental.service;
 
 import com.carrental.DTO.PaymentRequest;
 import com.carrental.DTO.PaymentResponse;
-import com.carrental.model.entity.Booking;
+import com.carrental.model.entity.Decorator.Booking;
 import com.carrental.model.entity.Payment;
 import com.carrental.model.enums.PaymentStatus;
 import com.carrental.model.enums.PaymentType;
