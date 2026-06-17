@@ -31,6 +31,11 @@ public class Booking implements BookingOrder{
 
     private double refundAmount; // Số tiền hoàn lại khi hủy đơn
 
+    private boolean hasPet;
+    private boolean hasGPS;
+    private boolean hasBabySeat;
+    private boolean hasDashcam;
+
     @Temporal(TemporalType.TIMESTAMP)
     private Date confirmedAt; // Thời điểm Owner xác nhận (để tính 12h tự hủy)
 

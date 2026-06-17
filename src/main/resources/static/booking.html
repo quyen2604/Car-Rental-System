@@ -146,6 +146,23 @@
                     <input type="date" id="endDate" class="form-input" onchange="calculatePrice()" required>
                 </div>
 
+                <div class="form-group" style="margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="hasPet" onchange="calculatePrice()" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="hasPet" style="cursor: pointer; margin-bottom: 0; font-weight: 600;">🐾 Mang theo thú cưng (+150.000đ)</label>
+                </div>
+                <div class="form-group" style="margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="hasGPS" onchange="calculatePrice()" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="hasGPS" style="cursor: pointer; margin-bottom: 0; font-weight: 600;">📍 Thiết bị định vị GPS (+50.000đ)</label>
+                </div>
+                <div class="form-group" style="margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="hasBabySeat" onchange="calculatePrice()" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="hasBabySeat" style="cursor: pointer; margin-bottom: 0; font-weight: 600;">👶 Ghế trẻ em chuyên dụng (+100.000đ)</label>
+                </div>
+                <div class="form-group" style="margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="hasDashcam" onchange="calculatePrice()" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="hasDashcam" style="cursor: pointer; margin-bottom: 0; font-weight: 600;">📷 Camera hành trình (+80.000đ)</label>
+                </div>
+
                 <div class="form-group" style="margin-bottom: 1.25rem;">
                     <label for="couponCode">🎟️ Mã Giảm Giá</label>
                     <div style="display: flex; gap: 0.5rem;">
@@ -165,6 +182,22 @@
                     <div class="price-row">
                         <span>Thời gian thuê</span>
                         <span id="numDaysDisplay">0 ngày</span>
+                    </div>
+                    <div class="price-row" id="petFeeRow" style="display: none;">
+                        <span>🐾 Phụ phí thú cưng</span>
+                        <span>+150.000đ</span>
+                    </div>
+                    <div class="price-row" id="gpsFeeRow" style="display: none;">
+                        <span>📍 Thiết bị định vị GPS</span>
+                        <span>+50.000đ</span>
+                    </div>
+                    <div class="price-row" id="babySeatFeeRow" style="display: none;">
+                        <span>👶 Ghế trẻ em chuyên dụng</span>
+                        <span>+100.000đ</span>
+                    </div>
+                    <div class="price-row" id="dashcamFeeRow" style="display: none;">
+                        <span>📷 Camera hành trình</span>
+                        <span>+80.000đ</span>
                     </div>
                     <div class="price-row total">
                         <span>Tổng chi phí</span>
@@ -242,7 +275,17 @@
             const diffTime = Math.abs(end - start);
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Tính cả ngày đầu tiên
 
-            const baseTotal = diffDays * vehicleData.pricePerDay;
+            const hasPet = document.getElementById('hasPet') && document.getElementById('hasPet').checked;
+            const hasGPS = document.getElementById('hasGPS') && document.getElementById('hasGPS').checked;
+            const hasBabySeat = document.getElementById('hasBabySeat') && document.getElementById('hasBabySeat').checked;
+            const hasDashcam = document.getElementById('hasDashcam') && document.getElementById('hasDashcam').checked;
+
+            let baseTotal = diffDays * vehicleData.pricePerDay;
+            if (hasPet) baseTotal += 150000;
+            if (hasGPS) baseTotal += 50000;
+            if (hasBabySeat) baseTotal += 100000;
+            if (hasDashcam) baseTotal += 80000;
+
             const finalTotal = baseTotal * (1 - discountPercent);
 
             // Cập nhật lên UI (Format tiền tệ VNĐ)

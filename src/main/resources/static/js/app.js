@@ -840,12 +840,34 @@ function calculatePrice() {
     const diffTime = Math.abs(end - start);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Tính cả ngày đầu tiên
 
-    const total = diffDays * vehicleData.pricePerDay;
+    const hasPet = document.getElementById('hasPet') && document.getElementById('hasPet').checked;
+    const hasGPS = document.getElementById('hasGPS') && document.getElementById('hasGPS').checked;
+    const hasBabySeat = document.getElementById('hasBabySeat') && document.getElementById('hasBabySeat').checked;
+    const hasDashcam = document.getElementById('hasDashcam') && document.getElementById('hasDashcam').checked;
+
+    let total = diffDays * vehicleData.pricePerDay;
+    if (hasPet) total += 150000;
+    if (hasGPS) total += 50000;
+    if (hasBabySeat) total += 100000;
+    if (hasDashcam) total += 80000;
 
     if (priceBreakdown) {
         priceBreakdown.style.display = 'block';
         document.getElementById('pricePerDayDisplay').innerText = formatVND(vehicleData.pricePerDay);
         document.getElementById('numDaysDisplay').innerText = `${diffDays} ngày`;
+        
+        const petFeeRow = document.getElementById('petFeeRow');
+        if (petFeeRow) petFeeRow.style.display = hasPet ? 'flex' : 'none';
+
+        const gpsFeeRow = document.getElementById('gpsFeeRow');
+        if (gpsFeeRow) gpsFeeRow.style.display = hasGPS ? 'flex' : 'none';
+
+        const babySeatFeeRow = document.getElementById('babySeatFeeRow');
+        if (babySeatFeeRow) babySeatFeeRow.style.display = hasBabySeat ? 'flex' : 'none';
+
+        const dashcamFeeRow = document.getElementById('dashcamFeeRow');
+        if (dashcamFeeRow) dashcamFeeRow.style.display = hasDashcam ? 'flex' : 'none';
+        
         document.getElementById('totalPriceDisplay').innerText = formatVND(total);
     }
 }
@@ -871,10 +893,20 @@ async function submitBookingDirect() {
     let days = Math.ceil(timeDiff / (1000 * 3600 * 24));
     if (days <= 0) days = 1;
 
+    const hasPet = document.getElementById('hasPet') && document.getElementById('hasPet').checked;
+    const hasGPS = document.getElementById('hasGPS') && document.getElementById('hasGPS').checked;
+    const hasBabySeat = document.getElementById('hasBabySeat') && document.getElementById('hasBabySeat').checked;
+    const hasDashcam = document.getElementById('hasDashcam') && document.getElementById('hasDashcam').checked;
+
     // Giả sử xe giá 700k/ngày, tiền cọc = (ngày * 700k) / 2
     // Bạn nên lấy giá xe từ biến vehicleData có sẵn trong file của bạn
     const pricePerDay = vehicleData ? vehicleData.pricePerDay : 700000;
-    const totalAmount = days * pricePerDay;
+    let totalAmount = days * pricePerDay;
+    if (hasPet) totalAmount += 150000;
+    if (hasGPS) totalAmount += 50000;
+    if (hasBabySeat) totalAmount += 100000;
+    if (hasDashcam) totalAmount += 80000;
+    
     const depositAmount = totalAmount * 0.5; // Cọc 50%
 
     const couponCodeInput = document.getElementById('couponCode');
@@ -887,7 +919,11 @@ async function submitBookingDirect() {
         startDate: startDate,              // Gửi đi chuỗi "yyyy-MM-dd"
         endDate: endDate,                  // Gửi đi chuỗi "yyyy-MM-dd"
         deposit: depositAmount,            // Gửi kèm tiền cọc
-        couponCode: couponCode             // Thêm mã giảm giá
+        couponCode: couponCode,            // Thêm mã giảm giá
+        hasPet: hasPet,                     // Mang theo thú cưng
+        hasGPS: hasGPS,                     // Định vị GPS
+        hasBabySeat: hasBabySeat,           // Ghế trẻ em
+        hasDashcam: hasDashcam              // Camera hành trình
     };
 
     // 4. Gọi API gửi xuống Backend

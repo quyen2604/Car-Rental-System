@@ -17,4 +17,8 @@ public class BookingRequest {
     private Date endDate;
     private String couponCode;
     private double deposit;
+    private boolean hasPet;
+    private boolean hasGPS;
+    private boolean hasBabySeat;
+    private boolean hasDashcam;
 }

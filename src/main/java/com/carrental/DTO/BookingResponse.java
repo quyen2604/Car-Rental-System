@@ -12,6 +12,10 @@ public class BookingResponse {
     private double totalAmount;
     private double refundAmount;
     private String bookingStatus;
+    private boolean hasPet;
+    private boolean hasGPS;
+    private boolean hasBabySeat;
+    private boolean hasDashcam;
 
     private int renterId;
     private String renterName;
