@@ -50,8 +50,9 @@ public class PaymentService {
         payment = paymentRepository.save(payment);
 
         try {
-            // Thực thi thanh toán qua Strategy
-            String resultUrl = strategy.processPay(req.getAmount(), String.valueOf(payment.getPaymentId()), "Cọc xe booking " + booking.getBookingId());
+            // Thực thi thanh toán qua Strategy (Thêm timestamp vào orderId để tránh trùng lặp mã đơn trong MoMo)
+            String momoOrderId = payment.getPaymentId() + "_" + System.currentTimeMillis();
+            String resultUrl = strategy.processPay(req.getAmount(), momoOrderId, "Cọc xe booking " + booking.getBookingId());
 
             if ("CASH".equalsIgnoreCase(req.getMethod())) {
                 // Cập nhật trạng thái SUCCESS
@@ -98,7 +99,8 @@ public class PaymentService {
         payment = paymentRepository.save(payment);
 
         try {
-            String resultUrl = strategy.processPay(req.getAmount(), String.valueOf(payment.getPaymentId()), "Thanh toán tổng booking " + booking.getBookingId());
+            String momoOrderId = payment.getPaymentId() + "_" + System.currentTimeMillis();
+            String resultUrl = strategy.processPay(req.getAmount(), momoOrderId, "Thanh toán tổng booking " + booking.getBookingId());
 
             if ("CASH".equalsIgnoreCase(req.getMethod())) {
                 payment.setPaymentStatus(PaymentStatus.SUCCESS);

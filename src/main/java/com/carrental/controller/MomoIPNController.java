@@ -70,7 +70,11 @@ public class MomoIPNController {
 
             // Logic to update DB
             if (orderId != null) {
-                Integer paymentId = Integer.parseInt(orderId);
+                String localOrderId = orderId;
+                if (orderId.contains("_")) {
+                    localOrderId = orderId.split("_")[0];
+                }
+                Integer paymentId = Integer.parseInt(localOrderId);
                 Payment payment = paymentRepository.findById(Long.valueOf(paymentId)).orElse(null);
                 if (payment != null && payment.getPaymentStatus() == PaymentStatus.PENDING) {
                     if (resultCode == 0) {
