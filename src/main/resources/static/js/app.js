@@ -372,7 +372,7 @@ async function loadRenterBookings() {
                 statusDisplay = 'Đã trả xe';
                 if (!isOwner) {
                     actionButtons = `
-                        <button class="btn btn-primary" onclick="completeBooking(${b.bookingId})">Thanh toán & Hoàn thành</button>
+                        <button class="btn btn-primary" onclick="openFinalPaymentModal(${b.bookingId})">💳 Thanh Toán & Hoàn Thành</button>
                     `;
                 } else {
                     statusDisplay = 'Đã nhận xe, chờ thanh toán';
@@ -434,20 +434,202 @@ async function cancelBooking(id, role = 'RENTER') {
     }
 }
 
-// Thanh toán cọc
-async function payDeposit(id) {
-    if (!confirm('Bạn có chắc chắn muốn thanh toán tiền cọc cho đơn này không?')) return;
+// ================================================================
+// PAYMENT MODAL SYSTEM
+// ================================================================
+
+// State object để lưu thông tin thanh toán hiện tại
+const paymentState = {
+    deposit: { bookingId: null, amount: 0, method: 'MOMO', bookingData: null },
+    final:   { bookingId: null, amount: 0, method: 'MOMO', bookingData: null }
+};
+
+// Mở modal thanh toán cọc
+function payDeposit(bookingId) {
+    // Lấy thông tin booking từ danh sách hiện tại
+    fetch(`${window.API_BASE_URL}/bookings/${bookingId}`)
+        .then(r => r.json())
+        .then(b => {
+            const depositAmt = b.totalAmount * 0.30;  // Cọc 30%
+            paymentState.deposit.bookingId = bookingId;
+            paymentState.deposit.amount    = depositAmt;
+            paymentState.deposit.bookingData = b;
+
+            // Điền thông tin vào modal
+            document.getElementById('dep-vehicle-name').textContent =
+                `${b.vehicleBrand || ''} ${b.vehicleModel || ''}`.trim() || 'Thông tin xe';
+            document.getElementById('dep-booking-dates').textContent =
+                `📅 Mã đơn: #${b.bookingId} | ${formatDate(b.startDate)} → ${formatDate(b.endDate)}`;
+            document.getElementById('dep-amount-display').textContent = formatVND(depositAmt);
+            document.getElementById('dep-total-amount').textContent   = formatVND(b.totalAmount);
+            document.getElementById('dep-pay-now').textContent        = formatVND(depositAmt);
+
+            // Reset modal về trạng thái form
+            resetPaymentModal('dep');
+            openPaymentModal('depositModal');
+        })
+        .catch(() => showToast('Không thể tải thông tin đơn đặt xe.', 'error'));
+}
+
+// Mở modal thanh toán tổng (khi booking ở trạng thái RETURNED)
+function openFinalPaymentModal(bookingId) {
+    fetch(`${window.API_BASE_URL}/bookings/${bookingId}`)
+        .then(r => r.json())
+        .then(b => {
+            const deposited  = b.totalAmount * 0.30;
+            const remaining  = b.totalAmount - deposited + (b.extraFee || 0);
+            paymentState.final.bookingId = bookingId;
+            paymentState.final.amount    = remaining;
+            paymentState.final.bookingData = b;
+
+            document.getElementById('fin-vehicle-name').textContent =
+                `${b.vehicleBrand || ''} ${b.vehicleModel || ''}`.trim() || 'Thông tin xe';
+            document.getElementById('fin-booking-dates').textContent =
+                `📅 Mã đơn: #${b.bookingId} | ${formatDate(b.startDate)} → ${formatDate(b.endDate)}`;
+            document.getElementById('fin-amount-display').textContent = formatVND(remaining);
+            document.getElementById('fin-total-amount').textContent   = formatVND(b.totalAmount);
+            document.getElementById('fin-deposited').textContent      = formatVND(deposited);
+            document.getElementById('fin-extra-fee').textContent      = formatVND(b.extraFee || 0);
+            document.getElementById('fin-pay-now').textContent        = formatVND(remaining);
+
+            resetPaymentModal('fin');
+            openPaymentModal('finalModal');
+        })
+        .catch(() => showToast('Không thể tải thông tin đơn đặt xe.', 'error'));
+}
+
+// Xử lý submit thanh toán cọc
+async function submitDepositPayment() {
+    const { bookingId, amount, method } = paymentState.deposit;
+    if (!bookingId) return;
+
+    setPaymentLoading('dep', true);
     try {
-        const response = await fetch(`${window.API_BASE_URL}/bookings/${id}/pay-deposit`, {
-            method: 'POST'
+        const res = await fetch(`${window.API_BASE_URL}/payments/deposit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookingId, amount, method, note: 'Thanh toán cọc 30%' })
         });
-        if (!response.ok) throw new Error(await response.text());
-        showToast('Đã thanh toán tiền cọc thành công!');
-        loadRenterBookings();
+
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+
+        showPaymentResult('dep', true,
+            '✅ Thanh Toán Thành Công!',
+            `Tiền cọc ${formatVND(amount)} đã được xác nhận qua ${method}.\nĐơn đặt xe đang chờ bàn giao.`,
+            data.transactionId || 'DEP-' + bookingId
+        );
     } catch (err) {
-        showToast(err.message, 'error');
+        showPaymentResult('dep', false, '❌ Thanh Toán Thất Bại', err.message, null);
+    } finally {
+        setPaymentLoading('dep', false);
     }
 }
+
+// Xử lý submit thanh toán tổng
+async function submitFinalPayment() {
+    const { bookingId, amount, method } = paymentState.final;
+    if (!bookingId) return;
+
+    setPaymentLoading('fin', true);
+    try {
+        const res = await fetch(`${window.API_BASE_URL}/payments/final`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ bookingId, amount, method, note: 'Thanh toán tổng kết thúc chuyến' })
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+
+        showPaymentResult('fin', true,
+            '🎉 Chuyến Đi Hoàn Thành!',
+            `Cảm ơn bạn đã sử dụng CarRental!\nTổng đã thanh toán: ${formatVND(amount)}.`,
+            data.transactionId || 'FIN-' + bookingId
+        );
+    } catch (err) {
+        showPaymentResult('fin', false, '❌ Thanh Toán Thất Bại', err.message, null);
+    } finally {
+        setPaymentLoading('fin', false);
+    }
+}
+
+// Chọn phương thức thanh toán trong modal
+function selectPaymentMethod(prefix, method) {
+    // Cập nhật state
+    if (prefix === 'dep') paymentState.deposit.method = method;
+    else paymentState.final.method = method;
+
+    // Reset tất cả cards
+    const momoCard = document.getElementById(`${prefix}-method-momo`);
+    const cashCard = document.getElementById(`${prefix}-method-cash`);
+    momoCard.classList.remove('selected', 'green-select');
+    cashCard.classList.remove('selected', 'green-select');
+
+    // Highlight card được chọn
+    const isGreen = (prefix === 'fin');
+    const selectedCard = method === 'MOMO' ? momoCard : cashCard;
+    selectedCard.classList.add('selected');
+    if (isGreen) selectedCard.classList.add('green-select');
+}
+
+// Hiển thị kết quả thanh toán (success / error)
+function showPaymentResult(prefix, success, title, sub, txnId) {
+    document.getElementById(`${prefix}-form-section`).style.display = 'none';
+    const resultEl = document.getElementById(`${prefix}-result-section`);
+    resultEl.classList.add('visible');
+
+    document.getElementById(`${prefix}-result-icon`).textContent  = success ? (prefix === 'dep' ? '✅' : '🎉') : '❌';
+    const titleEl = document.getElementById(`${prefix}-result-title`);
+    titleEl.textContent = title;
+    titleEl.className   = `pm-result-title ${success ? 'success' : 'error'}`;
+    document.getElementById(`${prefix}-result-sub`).textContent   = sub;
+    const txnEl = document.getElementById(`${prefix}-txn-id`);
+    txnEl.style.display = txnId ? 'block' : 'none';
+    if (txnId) txnEl.textContent = 'TXN: ' + txnId;
+
+    if (success) showToast(title);
+    else showToast(sub, 'error');
+}
+
+// Bật / tắt trạng thái loading trên nút thanh toán
+function setPaymentLoading(prefix, loading) {
+    const btn     = document.getElementById(`${prefix}-pay-btn`);
+    const spinner = document.getElementById(`${prefix}-spinner`);
+    const text    = document.getElementById(`${prefix}-btn-text`);
+    btn.disabled          = loading;
+    spinner.style.display = loading ? 'block' : 'none';
+    text.style.display    = loading ? 'none'  : 'inline';
+}
+
+// Reset modal về trạng thái mặc định (form visible, result hidden)
+function resetPaymentModal(prefix) {
+    const formSection   = document.getElementById(`${prefix}-form-section`);
+    const resultSection = document.getElementById(`${prefix}-result-section`);
+    if (formSection)   formSection.style.display = 'block';
+    if (resultSection) resultSection.classList.remove('visible');
+    setPaymentLoading(prefix, false);
+    // Reset method về MOMO mặc định
+    selectPaymentMethod(prefix, 'MOMO');
+}
+
+// Mở overlay modal
+function openPaymentModal(modalId) {
+    const el = document.getElementById(modalId);
+    if (el) {
+        el.classList.add('active');
+        // Đóng khi click bên ngoài
+        el.onclick = (e) => { if (e.target === el) closePaymentModal(modalId); };
+    }
+}
+
+// Đóng overlay modal
+function closePaymentModal(modalId) {
+    const el = document.getElementById(modalId);
+    if (el) el.classList.remove('active');
+}
+
+
 
 // Bàn giao xe (Owner)
 async function pickUpVehicle(id) {

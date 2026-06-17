@@ -125,6 +125,170 @@
         </div>
     </div>
 
+    <!-- ============================================================
+         MODAL THANH TOÁN CỌC TIỀN
+    ============================================================ -->
+    <div id="depositModal" class="payment-modal-overlay">
+        <div class="payment-modal">
+            <!-- Header -->
+            <div class="payment-modal-header deposit-header">
+                <div class="pm-header-top">
+                    <span class="pm-type-badge">💰 Thanh Toán Cọc</span>
+                    <button class="pm-close-btn" onclick="closePaymentModal('depositModal')">✕</button>
+                </div>
+                <div class="pm-vehicle-info">
+                    <div class="pm-vehicle-name" id="dep-vehicle-name">Toyota Camry 2023</div>
+                    <div class="pm-vehicle-sub" id="dep-booking-dates">📅 Mã đơn: #--</div>
+                </div>
+                <div class="pm-amount-hero">
+                    <div class="pm-amount-label">Số tiền cọc (30% tổng)</div>
+                    <div class="pm-amount-value" id="dep-amount-display">0 ₫</div>
+                </div>
+            </div>
+
+            <!-- Body — Form -->
+            <div class="payment-modal-body" id="dep-form-section">
+                <!-- Breakdown -->
+                <div class="pm-breakdown">
+                    <div class="pm-breakdown-row">
+                        <span>Tổng tiền thuê xe</span>
+                        <span class="pm-br-val" id="dep-total-amount">--</span>
+                    </div>
+                    <div class="pm-breakdown-row">
+                        <span>Tỷ lệ cọc</span>
+                        <span class="pm-br-val">30%</span>
+                    </div>
+                    <div class="pm-breakdown-row highlight">
+                        <span>💳 Cần thanh toán ngay</span>
+                        <span class="pm-br-val" id="dep-pay-now">--</span>
+                    </div>
+                </div>
+
+                <!-- Payment Method -->
+                <div class="pm-method-label">Chọn phương thức thanh toán</div>
+                <div class="pm-method-grid">
+                    <div class="pm-method-card selected" id="dep-method-momo" onclick="selectPaymentMethod('dep', 'MOMO')">
+                        <div class="pm-method-icon">📱</div>
+                        <div class="pm-method-info">
+                            <strong>MoMo</strong>
+                            <span>Ví điện tử</span>
+                        </div>
+                        <div class="pm-method-check">✓</div>
+                    </div>
+                    <div class="pm-method-card" id="dep-method-cash" onclick="selectPaymentMethod('dep', 'CASH')">
+                        <div class="pm-method-icon">💵</div>
+                        <div class="pm-method-info">
+                            <strong>Tiền mặt</strong>
+                            <span>Thanh toán trực tiếp</span>
+                        </div>
+                        <div class="pm-method-check">✓</div>
+                    </div>
+                </div>
+
+                <!-- Pay button -->
+                <button class="pm-pay-btn deposit-btn" id="dep-pay-btn" onclick="submitDepositPayment()">
+                    <div class="pm-spinner" id="dep-spinner"></div>
+                    <span id="dep-btn-text">🔒 Xác Nhận Thanh Toán Cọc</span>
+                </button>
+            </div>
+
+            <!-- Body — Result -->
+            <div class="pm-result" id="dep-result-section">
+                <div class="pm-result-icon" id="dep-result-icon">✅</div>
+                <div class="pm-result-title success" id="dep-result-title">Thanh Toán Thành Công!</div>
+                <div class="pm-result-sub" id="dep-result-sub">Tiền cọc đã được xác nhận. Đơn đặt xe của bạn đang được xử lý.</div>
+                <div class="pm-result-txn" id="dep-txn-id">TXN: --</div>
+                <button class="btn btn-primary" onclick="closePaymentModal('depositModal'); loadRenterBookings();" style="width:100%">
+                    Xem Lịch Sử Đặt Xe →
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         MODAL THANH TOÁN TỔNG (THANH TOÁN CUỐI)
+    ============================================================ -->
+    <div id="finalModal" class="payment-modal-overlay">
+        <div class="payment-modal">
+            <!-- Header -->
+            <div class="payment-modal-header final-header">
+                <div class="pm-header-top">
+                    <span class="pm-type-badge">🏁 Thanh Toán Tổng</span>
+                    <button class="pm-close-btn" onclick="closePaymentModal('finalModal')">✕</button>
+                </div>
+                <div class="pm-vehicle-info">
+                    <div class="pm-vehicle-name" id="fin-vehicle-name">Toyota Camry 2023</div>
+                    <div class="pm-vehicle-sub" id="fin-booking-dates">📅 Mã đơn: #--</div>
+                </div>
+                <div class="pm-amount-hero">
+                    <div class="pm-amount-label">Số tiền cần thanh toán</div>
+                    <div class="pm-amount-value" id="fin-amount-display">0 ₫</div>
+                </div>
+            </div>
+
+            <!-- Body — Form -->
+            <div class="payment-modal-body" id="fin-form-section">
+                <!-- Breakdown -->
+                <div class="pm-breakdown">
+                    <div class="pm-breakdown-row">
+                        <span>Tổng tiền thuê xe</span>
+                        <span class="pm-br-val" id="fin-total-amount">--</span>
+                    </div>
+                    <div class="pm-breakdown-row">
+                        <span>Đã cọc trước (30%)</span>
+                        <span class="pm-br-val" id="fin-deposited">--</span>
+                    </div>
+                    <div class="pm-breakdown-row">
+                        <span>Phụ phí phát sinh</span>
+                        <span class="pm-br-val" id="fin-extra-fee">0 ₫</span>
+                    </div>
+                    <div class="pm-breakdown-row highlight green">
+                        <span>💳 Còn cần thanh toán</span>
+                        <span class="pm-br-val" id="fin-pay-now">--</span>
+                    </div>
+                </div>
+
+                <!-- Payment Method -->
+                <div class="pm-method-label">Chọn phương thức thanh toán</div>
+                <div class="pm-method-grid">
+                    <div class="pm-method-card selected" id="fin-method-momo" onclick="selectPaymentMethod('fin', 'MOMO')">
+                        <div class="pm-method-icon">📱</div>
+                        <div class="pm-method-info">
+                            <strong>MoMo</strong>
+                            <span>Ví điện tử</span>
+                        </div>
+                        <div class="pm-method-check">✓</div>
+                    </div>
+                    <div class="pm-method-card" id="fin-method-cash" onclick="selectPaymentMethod('fin', 'CASH')">
+                        <div class="pm-method-icon">💵</div>
+                        <div class="pm-method-info">
+                            <strong>Tiền mặt</strong>
+                            <span>Thanh toán trực tiếp</span>
+                        </div>
+                        <div class="pm-method-check">✓</div>
+                    </div>
+                </div>
+
+                <!-- Pay button -->
+                <button class="pm-pay-btn final-btn" id="fin-pay-btn" onclick="submitFinalPayment()">
+                    <div class="pm-spinner" id="fin-spinner"></div>
+                    <span id="fin-btn-text">✅ Hoàn Tất Thanh Toán & Kết Thúc</span>
+                </button>
+            </div>
+
+            <!-- Body — Result -->
+            <div class="pm-result" id="fin-result-section">
+                <div class="pm-result-icon" id="fin-result-icon">🎉</div>
+                <div class="pm-result-title success" id="fin-result-title">Hoàn Thành Chuyến Đi!</div>
+                <div class="pm-result-sub" id="fin-result-sub">Cảm ơn bạn đã sử dụng dịch vụ CarRental. Hẹn gặp lại!</div>
+                <div class="pm-result-txn" id="fin-txn-id">TXN: --</div>
+                <button class="btn btn-primary" onclick="closePaymentModal('finalModal'); loadRenterBookings();" style="width:100%">
+                    Xem Lịch Sử Đặt Xe →
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="/js/app.js"></script>
 </body>

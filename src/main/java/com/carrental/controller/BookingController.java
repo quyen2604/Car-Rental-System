@@ -43,8 +43,12 @@ public class BookingController {
     }
 
     // BƯỚC 3: Khách hàng thanh toán cọc
+    // amount và method là tuỳ chọn — nếu không gửi thì dùng giá trị mặc định (0% & MOMO)
     @PostMapping("/{id}/pay-deposit")
-    public ResponseEntity<?> payDeposit(@PathVariable int id, @RequestParam double amount, @RequestParam String method) {
+    public ResponseEntity<?> payDeposit(
+            @PathVariable int id,
+            @RequestParam(required = false, defaultValue = "0") double amount,
+            @RequestParam(required = false, defaultValue = "MOMO") String method) {
         try {
             BookingResponse response = bookingFacade.payDepositForBooking(id, amount, method);
             return ResponseEntity.ok(response);
@@ -79,8 +83,12 @@ public class BookingController {
     }
 
     // BƯỚC 6: Khách hàng thanh toán nốt phần còn lại
+    // amount và method là tuỳ chọn — frontend mới dùng /api/payments/final thay thế
     @PostMapping("/{id}/pay-remaining")
-    public ResponseEntity<?> payRemaining(@PathVariable int id, @RequestParam double amount, @RequestParam String method) {
+    public ResponseEntity<?> payRemaining(
+            @PathVariable int id,
+            @RequestParam(required = false, defaultValue = "0") double amount,
+            @RequestParam(required = false, defaultValue = "MOMO") String method) {
         try {
             bookingFacade.payRemainingBalance(id, amount, method);
             return ResponseEntity.ok("Thanh toán phần còn lại thành công!");
