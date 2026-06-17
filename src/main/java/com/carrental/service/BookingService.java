@@ -6,7 +6,10 @@ import com.carrental.model.entity.Coupon;
 import com.carrental.model.entity.Decorator.Booking;
 import com.carrental.model.entity.Decorator.BookingOrder;
 import com.carrental.model.entity.Decorator.CouponDecorator;
-import com.carrental.model.entity.Decorator.ServiceDecorator;
+import com.carrental.model.entity.Decorator.PetDecorator;
+import com.carrental.model.entity.Decorator.GPSDecorator;
+import com.carrental.model.entity.Decorator.BabySeatDecorator;
+import com.carrental.model.entity.Decorator.DashcamDecorator;
 import com.carrental.model.entity.Renter;
 import com.carrental.model.entity.Vehicle;
 import com.carrental.model.enums.BookingStatus;
@@ -83,22 +86,22 @@ public class BookingService {
 
         // Bọc thêm gói mang theo thú cưng (Phí: 150,000 VNĐ)
         if (request.isHasPet()) {
-            finalOrder = new ServiceDecorator(finalOrder, "Thú cưng", 150000.0);
+            finalOrder = new PetDecorator(finalOrder, 150000.0);
         }
 
         // Bọc thêm gói định vị GPS (Phí: 50,000 VNĐ)
         if (request.isHasGPS()) {
-            finalOrder = new ServiceDecorator(finalOrder, "Định vị GPS", 50000.0);
+            finalOrder = new GPSDecorator(finalOrder, 50000.0);
         }
 
         // Bọc thêm gói ghế trẻ em (Phí: 100,000 VNĐ)
         if (request.isHasBabySeat()) {
-            finalOrder = new ServiceDecorator(finalOrder, "Ghế trẻ em", 100000.0);
+            finalOrder = new BabySeatDecorator(finalOrder, 100000.0);
         }
 
         // Bọc thêm gói camera hành trình (Phí: 80,000 VNĐ)
         if (request.isHasDashcam()) {
-            finalOrder = new ServiceDecorator(finalOrder, "Camera hành trình", 80000.0);
+            finalOrder = new DashcamDecorator(finalOrder, 80000.0);
         }
 
 
