@@ -163,10 +163,16 @@ async function handleLogin(e) {
 
         const user = await response.json();
         localStorage.setItem('user', JSON.stringify(user));
+        if (user.popupMessage) {
+            alert(` Hệ thống thông báo: ${user.popupMessage}`);
+        }
         showToast(`Chào mừng trở lại, ${user.fullName}!`);
         closeAuthModal();
         checkUserSession();
-        
+        const loginModal = document.getElementById('authModal');
+        if (loginModal) loginModal.style.display = 'none';
+
+        location.reload();
         // Reload if on booking page or dashboard to update data
         if (window.location.pathname.includes('booking.html')) {
             window.location.reload();
@@ -1115,4 +1121,4 @@ async function handleApproveVehicle(vehicleId, status) {
     } catch (err) {
         showToast(err.message, 'error');
     }
-}
+}
