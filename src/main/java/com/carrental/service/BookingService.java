@@ -169,7 +169,7 @@ public class BookingService {
     }
 
     @Transactional
-    public BookingResponse completeBooking(int bookingId) {
+        public BookingResponse completeBooking(int bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
 
