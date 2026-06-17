@@ -59,7 +59,7 @@ public class BookingService {
         }
 
         long diff = request.getEndDate().getTime() - request.getStartDate().getTime();
-        long days = diff / (24 * 60 * 60 * 1000);
+        long days = (diff / (24 * 60 * 60 * 1000)) + 1;
         if (days <= 0) {
             days = 1;
         }
