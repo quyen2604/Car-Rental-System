@@ -28,16 +28,14 @@ public class SecurityConfig {
 
                 // 3. Cấu hình phân quyền đường dẫn
                 .authorizeHttpRequests(auth -> auth
-                        // Cho phép truy cập H2 Console
-                        .requestMatchers("/h2-console/**").permitAll()
+
                         // Mở cửa hoàn toàn cho các API liên quan đến Authentication (Đăng ký, Đăng
                         // nhập)
                         .requestMatchers("/api/auth/**").permitAll()
                         // Bất kỳ request nào khác tạm thời mở ra để chúng ta dễ test giao diện gốc
                         .anyRequest().permitAll())
 
-                // Cho phép hiển thị iframe cho H2 console
-                .headers(headers -> headers.frameOptions(frame -> frame.disable()))
+
 
                 // 4. Đưa Session về chế độ STATELESS (Không dùng Session dính liền giao diện
                 // nữa)
