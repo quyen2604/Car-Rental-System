@@ -867,13 +867,17 @@ async function submitBookingDirect() {
     const totalAmount = days * pricePerDay;
     const depositAmount = totalAmount * 0.5; // Cọc 50%
 
+    const couponCodeInput = document.getElementById('couponCode');
+    const couponCode = couponCodeInput ? couponCodeInput.value.trim() : "";
+
     // 3. Đóng gói dữ liệu thành chuẩn JSON
     const requestBody = {
         renterId: parseInt(renterId) || 1, // Fix cứng ID=1 nếu chưa làm chức năng đăng nhập
         vehicleId: parseInt(vehicleId),    // Lấy từ URL (đã có sẵn trong html của bạn)
         startDate: startDate,              // Gửi đi chuỗi "yyyy-MM-dd"
         endDate: endDate,                  // Gửi đi chuỗi "yyyy-MM-dd"
-        deposit: depositAmount             // Gửi kèm tiền cọc
+        deposit: depositAmount,            // Gửi kèm tiền cọc
+        couponCode: couponCode             // Thêm mã giảm giá
     };
 
     // 4. Gọi API gửi xuống Backend

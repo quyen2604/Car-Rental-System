@@ -87,116 +87,169 @@
 </head>
 <body>
 
-    <!-- Toast Notification System -->
-    <div id="toastContainer" class="toast-container"></div>
+<div id="toastContainer" class="toast-container"></div>
 
-    <!-- Header / Navbar -->
-    <nav class="navbar">
-        <a href="/index.html" class="nav-brand">🚙 CarRental</a>
-        <div class="nav-links">
-            <a href="/index.html" class="nav-link">Trang Chủ</a>
-            <div id="navUserDropdown" style="display:none; align-items:center; gap:1rem;">
-                <span id="navUsername" style="font-size:0.95rem; font-weight:600; color:var(--white);">👤 Khách Hàng</span>
-                <button id="btnLogout" class="btn btn-danger" style="font-size: 0.85rem; padding: 0.5rem 1rem;">Đăng Xuất</button>
+<nav class="navbar">
+    <a href="/index.html" class="nav-brand">🚙 CarRental</a>
+    <div class="nav-links">
+        <a href="/index.html" class="nav-link">Trang Chủ</a>
+        <div id="navUserDropdown" style="display:none; align-items:center; gap:1rem;">
+            <span id="navUsername" style="font-size:0.95rem; font-weight:600; color:var(--white);">👤 Khách Hàng</span>
+            <button id="btnLogout" class="btn btn-danger" style="font-size: 0.85rem; padding: 0.5rem 1rem;">Đăng Xuất</button>
+        </div>
+    </div>
+</nav>
+
+<div class="container" style="margin-top: 2rem;">
+    <h2 class="section-title">🗓️ Hoàn Tất Đơn Đặt Xe</h2>
+
+    <div class="booking-layout">
+        <div class="summary-card">
+            <div class="summary-hero">
+                <div id="vehicleIcon" style="font-size: 5rem; margin-bottom: 1rem;">⏳</div>
+                <div id="vehicleTypeBadge" style="display:inline-block; font-size:0.75rem; font-weight:700; padding:0.25rem 0.75rem; border-radius:50px; background:rgba(255,255,255,0.2); margin-bottom:0.5rem;">ĐANG TẢI...</div>
+                <h3 id="vehicleName" style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.25rem;">--</h3>
+                <div id="vehiclePriceHero" style="font-size: 1.5rem; font-weight: 700;">--</div>
+            </div>
+            <div class="summary-body" id="vehicleDetailsBody">
+                <div class="status-message">Đang tải thông tin xe...</div>
             </div>
         </div>
-    </nav>
 
-    <!-- Main Container -->
-    <div class="container" style="margin-top: 2rem;">
-        <h2 class="section-title">🗓️ Hoàn Tất Đơn Đặt Xe</h2>
-
-        <div class="booking-layout">
-            <!-- Left Side: Vehicle Details -->
-            <div class="summary-card">
-                <div class="summary-hero">
-                    <div id="vehicleIcon" style="font-size: 5rem; margin-bottom: 1rem;">⏳</div>
-                    <div id="vehicleTypeBadge" style="display:inline-block; font-size:0.75rem; font-weight:700; padding:0.25rem 0.75rem; border-radius:50px; background:rgba(255,255,255,0.2); margin-bottom:0.5rem;">ĐANG TẢI...</div>
-                    <h3 id="vehicleName" style="font-size: 1.75rem; font-weight: 800; margin-bottom: 0.25rem;">--</h3>
-                    <div id="vehiclePriceHero" style="font-size: 1.5rem; font-weight: 700;">--</div>
-                </div>
-                <div class="summary-body" id="vehicleDetailsBody">
-                    <div class="status-message">Đang tải thông tin xe...</div>
+        <div class="form-card">
+            <div id="successScreen" class="success-screen">
+                <div class="success-icon">🎉</div>
+                <h3 style="font-size: 1.5rem; font-weight: 800; color: var(--accent-dark);">Đặt Xe Thành Công!</h3>
+                <p style="color: var(--slate-600); margin-top: 0.5rem;">Yêu cầu đặt xe của bạn đã được gửi thành công và đang chờ duyệt.</p>
+                <div id="successBookingId" class="booking-id-badge">Mã đặt xe: #--</div>
+                <div style="margin-top: 1.5rem;">
+                    <a href="/index.html" class="btn btn-primary">🔍 Tiếp Tục Tìm Xe</a>
                 </div>
             </div>
 
-            <!-- Right Side: Booking Form -->
-            <div class="form-card">
-                <!-- Success State -->
-                <div id="successScreen" class="success-screen">
-                    <div class="success-icon">🎉</div>
-                    <h3 style="font-size: 1.5rem; font-weight: 800; color: var(--accent-dark);">Đặt Xe Thành Công!</h3>
-                    <p style="color: var(--slate-600); margin-top: 0.5rem;">Yêu cầu đặt xe của bạn đã được gửi thành công và đang chờ duyệt.</p>
-                    <div id="successBookingId" class="booking-id-badge">Mã đặt xe: #--</div>
-                    <div style="margin-top: 1.5rem;">
-                        <a href="/index.html" class="btn btn-primary">🔍 Tiếp Tục Tìm Xe</a>
+            <div id="formContent">
+                <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">📋 Thông Tin Thuê Xe</h3>
+
+                <div id="loggedInUserSummary" style="display:none; background: var(--primary-light); border: 1.5px solid rgba(79,70,229,0.2); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem;">
+                    <div style="font-size: 0.85rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 0.25rem; text-transform: uppercase;">Tài Khoản Đặt Xe</div>
+                    <div style="font-size: 0.95rem; font-weight: 600;" id="userSummaryName">--</div>
+                    <div style="font-size: 0.85rem; color: var(--slate-600);" id="userSummaryEmail">--</div>
+                    <input type="hidden" id="renterId">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="startDate">📅 Ngày Nhận Xe</label>
+                    <input type="date" id="startDate" class="form-input" onchange="calculatePrice()" required>
+                </div>
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="endDate">📅 Ngày Trả Xe</label>
+                    <input type="date" id="endDate" class="form-input" onchange="calculatePrice()" required>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="couponCode">🎟️ Mã Giảm Giá</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="couponCode" class="form-input" placeholder="Nhập mã (VD: GIAM10)" style="text-transform: uppercase;" oninput="this.value = this.value.toUpperCase()">
+                        <button type="button" class="btn btn-secondary" onclick="applyCouponUI()" style="cursor: pointer; white-space: nowrap; background: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1; padding: 0.5rem 1rem; border-radius: 4px; font-weight: 600;">
+                            Áp dụng
+                        </button>
+                    </div>
+                    <small id="couponMessage" style="display: none; margin-top: 0.5rem; font-weight: 600; font-size: 0.85rem;"></small>
+                </div>
+
+                <div id="priceBreakdown" class="price-breakdown" style="display:none;">
+                    <div class="price-row">
+                        <span>Đơn giá ngày</span>
+                        <span id="pricePerDayDisplay">--</span>
+                    </div>
+                    <div class="price-row">
+                        <span>Thời gian thuê</span>
+                        <span id="numDaysDisplay">0 ngày</span>
+                    </div>
+                    <div class="price-row total">
+                        <span>Tổng chi phí</span>
+                        <span id="totalPriceDisplay">--</span>
                     </div>
                 </div>
 
-                <!-- Form Content -->
-                <div id="formContent">
-                    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 1.5rem;">📋 Thông Tin Thuê Xe</h3>
-                    
-                    <!-- Logged In User Info Summary -->
-                    <div id="loggedInUserSummary" style="display:none; background: var(--primary-light); border: 1.5px solid rgba(79,70,229,0.2); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem;">
-                        <div style="font-size: 0.85rem; font-weight: 700; color: var(--primary-dark); margin-bottom: 0.25rem; text-transform: uppercase;">Tài Khoản Đặt Xe</div>
-                        <div style="font-size: 0.95rem; font-weight: 600;" id="userSummaryName">--</div>
-                        <div style="font-size: 0.85rem; color: var(--slate-600);" id="userSummaryEmail">--</div>
-                        <input type="hidden" id="renterId">
-                    </div>
-
-                    <!-- Date Pickers -->
-                    <div class="form-group" style="margin-bottom: 1.25rem;">
-                        <label for="startDate">📅 Ngày Nhận Xe</label>
-                        <input type="date" id="startDate" class="form-input" onchange="calculatePrice()" required>
-                    </div>
-                    <div class="form-group" style="margin-bottom: 1.25rem;">
-                        <label for="endDate">📅 Ngày Trả Xe</label>
-                        <input type="date" id="endDate" class="form-input" onchange="calculatePrice()" required>
-                    </div>
-
-                    <!-- Price breakdown -->
-                    <div id="priceBreakdown" class="price-breakdown" style="display:none;">
-                        <div class="price-row">
-                            <span>Đơn giá ngày</span>
-                            <span id="pricePerDayDisplay">--</span>
-                        </div>
-                        <div class="price-row">
-                            <span>Thời gian thuê</span>
-                            <span id="numDaysDisplay">0 ngày</span>
-                        </div>
-                        <div class="price-row total">
-                            <span>Tổng chi phí</span>
-                            <span id="totalPriceDisplay">--</span>
-                        </div>
-                    </div>
-
-                    <button id="btnSubmit" class="btn btn-primary" style="width:100%; height:48px;" onclick="submitBookingDirect()" disabled>
-                        <span>🔒</span> Vui Lòng Chọn Ngày
-                    </button>
-                </div>
+                <button id="btnSubmit" class="btn btn-primary" style="width:100%; height:48px;" onclick="submitBookingDirect()" disabled>
+                    <span>🔒</span> Vui Lòng Chọn Ngày
+                </button>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Scripts -->
-    <script src="/js/app.js"></script>
-    <script>
-        const urlParams = new URLSearchParams(window.location.search);
-        const vehicleId = urlParams.get('vehicleId');
+<script src="/js/app.js"></script>
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const vehicleId = urlParams.get('vehicleId');
 
-        let vehicleData = null;
+    let vehicleData = null;
 
-        if (!vehicleId) {
-            document.getElementById('vehicleDetailsBody').innerHTML = '<div class="status-message" style="color:var(--danger);">Không tìm thấy thông tin xe. Vui lòng quay lại trang chủ.</div>';
-        } else {
-            loadVehicleDetails(vehicleId);
-            
-            // Set ngày tối thiểu cho input date là ngày hôm nay
-            const todayStr = new Date().toISOString().split('T')[0];
-            document.getElementById('startDate').min = todayStr;
-            document.getElementById('endDate').min = todayStr;
+    if (!vehicleId) {
+        document.getElementById('vehicleDetailsBody').innerHTML = '<div class="status-message" style="color:var(--danger);">Không tìm thấy thông tin xe. Vui lòng quay lại trang chủ.</div>';
+    } else {
+        loadVehicleDetails(vehicleId);
+
+        // Set ngày tối thiểu cho input date là ngày hôm nay
+        const todayStr = new Date().toISOString().split('T')[0];
+        document.getElementById('startDate').min = todayStr;
+        document.getElementById('endDate').min = todayStr;
+    }
+
+    // ==========================================
+    // LOGIC ÁP DỤNG MÃ GIẢM GIÁ TRỰC TIẾP TRÊN UI
+    // ==========================================
+    function applyCouponUI() {
+        const codeInput = document.getElementById('couponCode').value.trim();
+        const msgBox = document.getElementById('couponMessage');
+        const startDateVal = document.getElementById('startDate').value;
+        const endDateVal = document.getElementById('endDate').value;
+
+        // 1. Kiểm tra xem đã chọn ngày chưa
+        if (!startDateVal || !endDateVal) {
+            alert("Vui lòng chọn Ngày Nhận Xe và Ngày Trả Xe trước khi áp dụng mã!");
+            return;
         }
-    </script>
+
+        // 2. Kiểm tra ô nhập mã rỗng
+        if (codeInput === "") {
+            msgBox.style.display = 'block';
+            msgBox.style.color = '#ef4444'; // Màu đỏ
+            msgBox.textContent = '❌ Vui lòng nhập mã giảm giá!';
+            return;
+        }
+
+        // 3. Xử lý logic mã giảm giá (Mô phỏng tại Frontend)
+        let discountPercent = 0;
+        if (codeInput === "GIAM10") {
+            discountPercent = 0.10; // Giảm 10%
+            msgBox.style.display = 'block';
+            msgBox.style.color = '#10b981'; // Màu xanh lá
+            msgBox.textContent = `✅ Áp dụng thành công mã [${codeInput}] - Giảm 10%!`;
+        } else {
+            msgBox.style.display = 'block';
+            msgBox.style.color = '#ef4444';
+            msgBox.textContent = '❌ Mã giảm giá không hợp lệ hoặc đã hết hạn!';
+            return;
+        }
+
+        // 4. Tính toán và cập nhật lại Tổng Tiền trên giao diện
+        if (vehicleData) {
+            const start = new Date(startDateVal);
+            const end = new Date(endDateVal);
+            const diffTime = Math.abs(end - start);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // Tính cả ngày đầu tiên
+
+            const baseTotal = diffDays * vehicleData.pricePerDay;
+            const finalTotal = baseTotal * (1 - discountPercent);
+
+            // Cập nhật lên UI (Format tiền tệ VNĐ)
+            document.getElementById('totalPriceDisplay').innerText =
+                new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(finalTotal);
+        }
+    }
+</script>
 </body>
 </html>

@@ -1,5 +1,7 @@
-package com.carrental.model.entity;
+package com.carrental.model.entity.Decorator;
 
+import com.carrental.model.entity.Renter;
+import com.carrental.model.entity.Vehicle;
 import com.carrental.model.enums.BookingStatus;
 import com.carrental.model.state.BookingState;
 import com.carrental.model.state.*;
@@ -11,7 +13,7 @@ import java.util.Date;
 @Table(name = "bookings")
 @Data
 @AllArgsConstructor
-public class Booking {
+public class Booking implements BookingOrder{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int bookingId;
@@ -119,5 +121,15 @@ public class Booking {
 
     public void cancel() {
         getState().cancel(this);
+    }
+
+    @Override
+    public double calculateTotal() {
+        return totalAmount;
+    }
+
+    @Override
+    public String getDescription() {
+        return "Don dat co ban";
     }
 }

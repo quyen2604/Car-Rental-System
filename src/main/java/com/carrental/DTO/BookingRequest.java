@@ -15,6 +15,6 @@ public class BookingRequest {
 
     @JsonFormat(pattern = "yyyy-MM-dd", timezone = "Asia/Ho_Chi_Minh")
     private Date endDate;
-
+    private String couponCode;
     private double deposit;
 }

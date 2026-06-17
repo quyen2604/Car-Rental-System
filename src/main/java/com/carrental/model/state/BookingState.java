@@ -1,6 +1,6 @@
 package com.carrental.model.state;
 
-import com.carrental.model.entity.Booking;
+import com.carrental.model.entity.Decorator.Booking;
 
 public interface BookingState {
     void confirm(Booking booking);

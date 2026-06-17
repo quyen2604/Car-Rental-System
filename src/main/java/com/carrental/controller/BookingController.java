@@ -151,4 +151,7 @@ public class BookingController {
     public ResponseEntity<List<BookingResponse>> getOwnerBookings(@PathVariable int ownerId) {
         return ResponseEntity.ok(bookingFacade.getOwnerBookings(ownerId));
     }
+
+
+
 }

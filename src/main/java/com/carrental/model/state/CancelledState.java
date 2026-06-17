@@ -1,6 +1,6 @@
 package com.carrental.model.state;
 
-import com.carrental.model.entity.Booking;
+import com.carrental.model.entity.Decorator.Booking;
 
 public class CancelledState implements BookingState {
     @Override
