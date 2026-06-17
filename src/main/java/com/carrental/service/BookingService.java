@@ -37,13 +37,11 @@ public class BookingService {
             throw new IllegalArgumentException("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.");
         }
 
-        // 2. Tìm người thuê
-        User user = userRepository.findById(request.getRenterId())
+        Renter renter = (Renter) userRepository.findById(request.getRenterId())
+                .filter(Renter.class::isInstance)
+                .map(Renter.class::cast)
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Không tìm thấy người dùng với ID: " + request.getRenterId()));
-        if (!(user instanceof Renter)) {
-            throw new IllegalArgumentException("Người dùng không phải là người thuê xe (Renter).");
-        }
+                        "Không tìm thấy người thuê hợp lệ với ID: " + request.getRenterId()));
         Renter renter = (Renter) user;
 
         // 3. Tìm xe
@@ -51,9 +49,8 @@ public class BookingService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy xe với ID: " + request.getVehicleId()));
 
         // 4. Kiểm tra trùng lịch đặt
-        List<Booking> overlaps = bookingRepository.findOverlappingBookings(
-                request.getVehicleId(), request.getStartDate(), request.getEndDate());
-        if (!overlaps.isEmpty()) {
+        if (bookingRepository.existsOverlappingBookings(
+                request.getVehicleId(), request.getStartDate(), request.getEndDate())) {
             throw new IllegalStateException("Xe đã được đặt hoặc thuê trong khoảng thời gian này.");
         }
 
@@ -68,8 +65,8 @@ public class BookingService {
         // 6. Lưu Booking
         Booking booking = new Booking();
         booking.setBookingDate(new Date());
-        booking.setStartDate(request.getStartDate());
-        booking.setEndDate(request.getEndDate());
+        booking.setStartDate(new Date(request.getStartDate().getTime()));
+        booking.setEndDate(new Date(request.getEndDate().getTime()));
         booking.setTotalAmount(totalAmount);
         booking.setBookingStatus(BookingStatus.PENDING);
         booking.setRenter(renter);
@@ -98,9 +95,9 @@ public class BookingService {
 
         // Gọi ủy quyền confirm. Nếu không hợp lệ sẽ tự văng lỗi từ AbstractBookingState.
         booking.confirm();
-        
+
         // Ghi nhận thời gian xác nhận để tính tự động hủy sau 12h
-        booking.setConfirmedAt(new Date());
+        booking.setConfirmedAt(new Date(System.currentTimeMillis()));
 
         Booking savedBooking = bookingRepository.save(booking);
         return mapToResponse(savedBooking);
@@ -109,14 +106,15 @@ public class BookingService {
     @Transactional
     public BookingResponse cancelBooking(int bookingId, String role) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Booking với ID: " + bookingId));
 
         if ("OWNER".equalsIgnoreCase(role) && booking.getBookingStatus() == BookingStatus.CONFIRMED) {
             throw new IllegalStateException("Chủ xe không thể hủy đơn khi đang chờ khách cọc.");
         }
+        // Tính hoàn cọc nếu trạng thái hợp lệ cho hoàn tiền cọc
+        if (List.of(BookingStatus.DEPOSIT_PAID, BookingStatus.CONFIRMED).contains(booking.getBookingStatus())) {
 
-        // Tính hoàn cọc nếu đơn đã ở trạng thái DEPOSIT_PAID
-        if (booking.getBookingStatus() == BookingStatus.DEPOSIT_PAID || booking.getBookingStatus() == BookingStatus.CONFIRMED) {
+            double deposit = booking.getTotalAmount(); // Giả sử đặt 100% totalAmount; có thể điều chỉnh nếu cần thiết
             double deposit = booking.getTotalAmount(); // Giả sử cọc = 100% totalAmount cho đơn giản, hoặc có thể custom
             if ("OWNER".equalsIgnoreCase(role)) {
                 // Owner hủy: Hoàn 100%
@@ -125,8 +123,7 @@ public class BookingService {
             } else {
                 // Renter hủy
                 long diffMs = booking.getStartDate().getTime() - System.currentTimeMillis();
-                long hours = diffMs / (1000 * 60 * 60);
-                
+                long hours = (booking.getStartDate().getTime() - System.currentTimeMillis()) / (1000 * 60 * 60);
                 if (hours > 48) {
                     booking.setRefundAmount(deposit); // 100%
                     System.out.println("Renter hủy trước >48h, hoàn 100%: " + deposit);
@@ -141,15 +138,15 @@ public class BookingService {
         }
 
         // Khôi phục lại State object từ Enum dưới DB
-        booking.restoreStateFromEnum();
-
-        // Gọi ủy quyền cancel. Nếu không hợp lệ sẽ tự văng lỗi từ AbstractBookingState.
+        if (booking.restoreStateFromEnum() == null) {
+            throw new IllegalStateException("Không thể khôi phục trạng thái Booking.");
+        }
         booking.cancel();
 
         Booking savedBooking = bookingRepository.save(booking);
         return mapToResponse(savedBooking);
     }
-    
+
     @Transactional
     public BookingResponse payDeposit(int bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
@@ -202,13 +199,13 @@ public class BookingService {
     public BookingResponse rejectBooking(int bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
-        
+
         // Khôi phục lại State object từ Enum dưới DB
         booking.restoreStateFromEnum();
-        
+
         // Gọi ủy quyền cancel. Nếu không hợp lệ sẽ tự văng lỗi từ AbstractBookingState.
         booking.cancel();
-        
+
         Booking savedBooking = bookingRepository.save(booking);
         return mapToResponse(savedBooking);
     }
@@ -229,19 +226,17 @@ public class BookingService {
         return mapToResponse(booking);
     }
 
-    @Scheduled(fixedRate = 3600000) // Chạy mỗi 1 giờ
+    @Scheduled(fixedRateString = "${scheduler.autoCancelUnpaidBookingsRate:3600000}")
     @Transactional
     public void autoCancelUnpaidBookings() {
         System.out.println("Scheduler: Quét các đơn hàng quá 12h chưa cọc...");
         List<Booking> allBookings = bookingRepository.findAll();
-        
+
         // Tìm các đơn CONFIRMED quá 12h
         List<Booking> overdueBookings = allBookings.stream()
-                .filter(b -> b.getBookingStatus() == BookingStatus.CONFIRMED && b.getConfirmedAt() != null)
+                .filter(b -> BookingStatus.CONFIRMED.equals(b.getBookingStatus()) && b.getConfirmedAt() != null)
                 .filter(b -> {
-                    long diffMs = System.currentTimeMillis() - b.getConfirmedAt().getTime();
-                    long hours = diffMs / (1000 * 60 * 60);
-                    return hours >= 12;
+                    return (System.currentTimeMillis() - b.getConfirmedAt().getTime()) / (1000 * 60 * 60) >= 12;
                 })
                 .collect(Collectors.toList());
 
@@ -253,7 +248,10 @@ public class BookingService {
         }
     }
 
-    private BookingResponse mapToResponse(Booking booking) {
+        BookingResponse response = new BookingResponse();
+        response.setFormattedBookingDate(formatDate(booking.getBookingDate()));
+        response.setFormattedStartDate(formatDate(booking.getStartDate()));
+        response.setFormattedEndDate(formatDate(booking.getEndDate()));
         BookingResponse response = new BookingResponse();
         response.setBookingId(booking.getBookingId());
         response.setBookingDate(booking.getBookingDate());
@@ -268,7 +266,7 @@ public class BookingService {
             response.setRenterName(booking.getRenter().getFullName());
         }
 
-        if (booking.getVehicle() != null) {
+        if (booking.getVehicle() != null && booking.getVehicle().getOwner() != null) {
             response.setVehicleId(booking.getVehicle().getVehicleId());
             response.setVehicleBrand(booking.getVehicle().getBrand());
             response.setVehicleModel(booking.getVehicle().getModel());
