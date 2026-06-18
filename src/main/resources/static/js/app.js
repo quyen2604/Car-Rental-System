@@ -53,8 +53,8 @@ function checkUserSession() {
         if (userDropdown) userDropdown.style.display = 'flex';
         if (usernameDisplay) usernameDisplay.innerText = `👤 ${user.fullName}`;
 
-        const isAdmin = user.dtype === 'Admin' || (user.email && user.email.includes('admin'));
-        const isOwner = !user.licenseNumber && !isAdmin;
+        const isAdmin = user.role === 'ADMIN' || user.dtype === 'Admin' || (user.email && user.email.includes('admin'));
+        const isOwner = user.role === 'OWNER' || (!user.licenseNumber && !isAdmin && user.role !== 'RENTER');
 
         if (myBookingsLink) myBookingsLink.style.display = isAdmin ? 'none' : 'inline-block';
         if (ownerVehiclesLink) ownerVehiclesLink.style.display = isOwner ? 'inline-block' : 'none';
@@ -331,7 +331,7 @@ async function loadRenterBookings() {
     }
 
     const user = JSON.parse(userStr);
-    const isOwner = (user.licenseNumber === undefined || user.licenseNumber === null);
+    const isOwner = user.role === 'OWNER' || (!user.licenseNumber && user.role !== 'RENTER' && !user.email?.includes('admin'));
 
     if (bookingsSectionTitle) {
         bookingsSectionTitle.innerText = isOwner ? '🛠️ Quản Lý Đơn Thuê Của Bạn' : '📂 Lịch Sử Chuyến Đi Của Bạn';
