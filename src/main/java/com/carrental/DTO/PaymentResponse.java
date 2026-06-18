@@ -14,6 +14,7 @@ public class PaymentResponse {
     private String transactionId;
     private String note;
     private Date paymentDate;
+    private String payUrl; // Redirect URL for e-wallets
     // Thông tin booking kèm theo cho tiện hiển thị
     private String vehicleBrand;
     private String vehicleModel;

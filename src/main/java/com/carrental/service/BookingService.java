@@ -6,6 +6,10 @@ import com.carrental.model.entity.Coupon;
 import com.carrental.model.entity.Decorator.Booking;
 import com.carrental.model.entity.Decorator.BookingOrder;
 import com.carrental.model.entity.Decorator.CouponDecorator;
+import com.carrental.model.entity.Decorator.PetDecorator;
+import com.carrental.model.entity.Decorator.GPSDecorator;
+import com.carrental.model.entity.Decorator.BabySeatDecorator;
+import com.carrental.model.entity.Decorator.DashcamDecorator;
 import com.carrental.model.entity.Renter;
 import com.carrental.model.entity.Vehicle;
 import com.carrental.model.enums.BookingStatus;
@@ -74,7 +78,32 @@ public class BookingService extends Observable {
         booking.setBookingStatus(BookingStatus.PENDING);
         booking.setRenter(renter);
         booking.setVehicle(vehicle);
+        booking.setHasPet(request.isHasPet());
+        booking.setHasGPS(request.isHasGPS());
+        booking.setHasBabySeat(request.isHasBabySeat());
+        booking.setHasDashcam(request.isHasDashcam());
+        
         BookingOrder finalOrder = booking;
+
+        // Bọc thêm gói mang theo thú cưng (Phí: 150,000 VNĐ)
+        if (request.isHasPet()) {
+            finalOrder = new PetDecorator(finalOrder, 150000.0);
+        }
+
+        // Bọc thêm gói định vị GPS (Phí: 50,000 VNĐ)
+        if (request.isHasGPS()) {
+            finalOrder = new GPSDecorator(finalOrder, 50000.0);
+        }
+
+        // Bọc thêm gói ghế trẻ em (Phí: 100,000 VNĐ)
+        if (request.isHasBabySeat()) {
+            finalOrder = new BabySeatDecorator(finalOrder, 100000.0);
+        }
+
+        // Bọc thêm gói camera hành trình (Phí: 80,000 VNĐ)
+        if (request.isHasDashcam()) {
+            finalOrder = new DashcamDecorator(finalOrder, 80000.0);
+        }
 
 
         if (request.getCouponCode() != null && !request.getCouponCode().trim().isEmpty()) {
@@ -276,6 +305,10 @@ public class BookingService extends Observable {
         response.setTotalAmount(booking.getTotalAmount());
         response.setRefundAmount(booking.getRefundAmount());
         response.setBookingStatus(booking.getBookingStatus().name());
+        response.setHasPet(booking.isHasPet());
+        response.setHasGPS(booking.isHasGPS());
+        response.setHasBabySeat(booking.isHasBabySeat());
+        response.setHasDashcam(booking.isHasDashcam());
 
         if (booking.getRenter() != null) {
             response.setRenterId(booking.getRenter().getUserId());
