@@ -134,26 +134,6 @@ public class PaymentService {
     }
 
     // =========================================================
-    // LEGACY METHOD
-    // =========================================================
-    @Transactional
-    public void processPay(double amount, PaymentType paymentType, String method) {
-        if (amount <= 0) {
-            throw new IllegalArgumentException("Số tiền thanh toán phải lớn hơn 0.");
-        }
-
-        // Vì hàm này không có Booking hay Payment thật, ta tạo nhanh object rỗng giả lập
-        // để đẩy vào chạy mà không làm gãy (crash) hệ thống
-        Payment dummyPayment = new Payment();
-        Booking dummyBooking = new Booking();
-
-        PaymentStrategy strategy = resolveStrategy(method);
-        strategy.processPay(dummyPayment, dummyBooking, amount);
-
-        System.out.println("✅ [LEGACY] Đã xử lý thanh toán loại " + paymentType + " bằng " + method.toUpperCase());
-    }
-
-    // =========================================================
     // TRUY VẤN LỊCH SỬ THANH TOÁN
     // =========================================================
     public List<PaymentResponse> getPaymentsByBooking(int bookingId) {
