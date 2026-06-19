@@ -9,13 +9,15 @@ import com.carrental.service.PaymentService;
 import com.carrental.service.VehicleService;
 import com.carrental.model.enums.BookingStatus;
 import com.carrental.model.enums.VehicleStatus;
-import com.carrental.model.enums.PaymentType;
 import org.springframework.stereotype.Component;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * Điều phối luồng nghiệp vụ tổng thể. Kết nối các phân hệ độc lập lại với nhau.
+ */
 @Transactional
 @Component
 @RequiredArgsConstructor
@@ -25,7 +27,7 @@ public class BookingFacade {
     private final PaymentService paymentService;
     private final BookingService bookingService;
 
-    // BƯỚC 1: Customer tạo Booking (Trạng thái: PENDING)
+    // BƯỚC 1: Khách hàng tạo yêu cầu đặt xe
     public BookingResponse createBookingOnly(BookingRequest request) {
         if (!vehicleService.checkAvailability(request.getVehicleId())) {
             throw new IllegalStateException("Xe không sẵn sàng để đặt.");
@@ -33,64 +35,81 @@ public class BookingFacade {
         return bookingService.createBooking(request);
     }
 
-    // BƯỚC 2: Owner xác nhận đơn (Trạng thái: CONFIRMED)
+    // BƯỚC 2: Chủ xe xác nhận cho thuê
     public BookingResponse ownerConfirmBooking(int bookingId) {
-        BookingResponse booking = bookingService.approveBooking(bookingId);
-        vehicleService.updateVehicleStatus(booking.getVehicleId(), VehicleStatus.BOOKED);
-        return booking;
+        return bookingService.approveBooking(bookingId);
     }
 
-    // BƯỚC 3: Customer thanh toán cọc (Trạng thái: DEPOSIT_PAID)
-    // Gọi từ BookingController (legacy endpoint dùng query param)
-    public BookingResponse payDepositForBooking(int bookingId, double amount, String paymentMethod) {
-        paymentService.processPay(amount, PaymentType.DEPOSIT, paymentMethod);
-        return bookingService.payDeposit(bookingId);
-    }
-
-    // BƯỚC 3 (mới): Thanh toán cọc qua PaymentController (lưu DB đầy đủ)
+    // BƯỚC 3: Khách hàng thanh toán tiền cọc (Luồng qua DTO)
     public PaymentResponse payDepositWithRecord(PaymentRequest req) {
+        // Ghi nhận giao dịch thanh toán
         PaymentResponse paymentRes = paymentService.processDeposit(req);
+        // Cập nhật trạng thái Booking
         bookingService.payDeposit(req.getBookingId());
         return paymentRes;
     }
 
-    // BƯỚC 4: Customer nhận xe (Trạng thái: RENTING)
-    public BookingResponse pickUpVehicle(int bookingId) {
-        return bookingService.pickUpVehicle(bookingId);
+    // BƯỚC 3.1: Khách hàng thanh toán tiền cọc (Luồng qua Parameter trực tiếp)
+    public BookingResponse payDepositForBooking(int bookingId, double amount, String paymentMethod) {
+        PaymentRequest req = new PaymentRequest();
+        req.setBookingId(bookingId);
+        req.setAmount(amount);
+        req.setPaymentMethod(paymentMethod);
+
+        paymentService.processDeposit(req);
+        return bookingService.payDeposit(bookingId);
     }
 
-    // BƯỚC 5: Customer trả xe (Trạng thái: RETURNED)
+    // BƯỚC 4: Khách hàng đến nhận xe
+    public BookingResponse pickUpVehicle(int bookingId) {
+        BookingResponse booking = bookingService.pickUpVehicle(bookingId);
+        // Chuyển trạng thái xe để hệ thống biết xe đang vận hành thực tế
+        vehicleService.updateVehicleStatus(booking.getVehicleId(), VehicleStatus.RENTING);
+        return booking;
+    }
+
+    // BƯỚC 5: Khách hàng trả xe
     public BookingResponse returnVehicle(int bookingId, double lateFee, double damageFee) {
+        // Ghi nhận thời điểm trả và cập nhật phụ phí phát sinh
         return bookingService.returnVehicle(bookingId, lateFee, damageFee);
     }
 
-    // BƯỚC 6: Thanh toán phần còn lại (BUG FIX: dùng PaymentType.FINAL, không phải DEPOSIT)
-    public void payRemainingBalance(int bookingId, double amount, String paymentMethod) {
-        paymentService.processPay(amount, PaymentType.FINAL, paymentMethod);
-    }
-
-    // BƯỚC 6 (mới): Thanh toán tổng qua PaymentController (lưu DB đầy đủ)
+    // BƯỚC 6: Khách hàng thanh toán phần tiền còn lại và hoàn tất chuyến đi (Luồng qua DTO)
     public PaymentResponse payFinalWithRecord(PaymentRequest req) {
+        // Xử lý thanh toán hóa đơn cuối cùng
         PaymentResponse paymentRes = paymentService.processFinalPayment(req);
-        bookingService.completeBooking(req.getBookingId());
-        vehicleService.updateVehicleStatus(
-            bookingService.getBookingById(req.getBookingId()).getVehicleId(),
-            VehicleStatus.AVAILABLE);
+
+        // Đóng hồ sơ chuyến đi
+        BookingResponse booking = bookingService.completeBooking(req.getBookingId());
+
+        // Trả xe về trạng thái sẵn sàng đón khách mới
+        vehicleService.updateVehicleStatus(booking.getVehicleId(), VehicleStatus.AVAILABLE);
         return paymentRes;
     }
 
-    // BƯỚC 7: Hoàn thành chuyến đi (Trạng thái: COMPLETED)
+    // BƯỚC 6.1: Khách hàng thanh toán phần tiền còn lại (Luồng qua Parameter trực tiếp)
+    public void payRemainingBalance(int bookingId, double amount, String paymentMethod) {
+        PaymentRequest req = new PaymentRequest();
+        req.setBookingId(bookingId);
+        req.setAmount(amount);
+        req.setPaymentMethod(paymentMethod);
+
+        paymentService.processFinalPayment(req);
+    }
+
+    // BƯỚC 7: Hoàn tất đơn hàng (Xử lý độc lập việc kết thúc hành trình và giải phóng xe)
     public BookingResponse completeBooking(int bookingId) {
         BookingResponse booking = bookingService.completeBooking(bookingId);
         vehicleService.updateVehicleStatus(booking.getVehicleId(), VehicleStatus.AVAILABLE);
         return booking;
     }
 
-    // --- CÁC HÀM TIỆN ÍCH KHÁC ---
+    // --- Các luồng xử lý ngoại lệ (Hủy/Từ chối) ---
 
     public BookingResponse cancelBooking(int bookingId, String role) {
         BookingResponse cancelledBooking = bookingService.cancelBooking(bookingId, role);
-        vehicleService.updateVehicleStatus(cancelledBooking.getVehicleId(), VehicleStatus.AVAILABLE);
+
+        // Kích hoạt tiến trình hoàn tiền tự động nếu hệ thống ghi nhận có khoản cần hoàn trả
         if (cancelledBooking.getRefundAmount() > 0) {
             paymentService.refund(cancelledBooking.getRefundAmount(), bookingId, "MOMO");
         }
@@ -98,10 +117,10 @@ public class BookingFacade {
     }
 
     public BookingResponse rejectBooking(int bookingId) {
-        BookingResponse booking = bookingService.rejectBooking(bookingId);
-        vehicleService.updateVehicleStatus(booking.getVehicleId(), VehicleStatus.AVAILABLE);
-        return booking;
+        return bookingService.rejectBooking(bookingId);
     }
+
+    // --- Các hàm truy xuất dữ liệu ---
 
     public BookingResponse updateBookingStatus(int bookingId, BookingStatus status) {
         return bookingService.updateBookingStatus(bookingId, status);
