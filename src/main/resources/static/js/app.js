@@ -441,9 +441,7 @@ async function loadRenterBookings() {
 // Hủy đặt xe
 async function cancelBooking(id, role = 'RENTER') {
     let confirmMsg = 'Bạn có chắc chắn muốn hủy đơn đặt xe này không?';
-    if (role === 'RENTER') {
-        confirmMsg += '\nLưu ý: Nếu đơn đã thanh toán cọc, tiền hoàn sẽ được tính theo quy định (<24h mất cọc, >48h hoàn 100%).';
-    }
+
     if (!confirm(confirmMsg)) return;
 
     try {
