@@ -3,17 +3,22 @@ package com.carrental.model.entity.Decorator;
 import com.carrental.model.entity.Renter;
 import com.carrental.model.entity.Vehicle;
 import com.carrental.model.enums.BookingStatus;
-import com.carrental.model.state.BookingState;
 import com.carrental.model.state.*;
 import jakarta.persistence.*;
 import lombok.*;
 import java.util.Date;
 
+/**
+ * Quản lý thông tin và trạng thái của một đơn đặt xe.
+ * - State Pattern: Chuyển đổi trạng thái đơn hàng (Pending -> Confirmed -> Renting...).
+ * - Decorator Pattern: Linh hoạt tính toán tổng tiền khi thêm các dịch vụ đi kèm.
+ */
 @Entity
 @Table(name = "bookings")
 @Data
 @AllArgsConstructor
-public class Booking implements BookingOrder{
+public class Booking implements BookingOrder {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int bookingId;
@@ -21,23 +26,37 @@ public class Booking implements BookingOrder{
     @Temporal(TemporalType.TIMESTAMP)
     private Date bookingDate;
 
-    @Temporal(TemporalType.DATE)
+    // Sử dụng TIMESTAMP để lưu chính xác giờ/phút/giây, hỗ trợ tính toán thời gian hủy đơn chính xác
+    @Temporal(TemporalType.TIMESTAMP)
     private Date startDate;
 
-    @Temporal(TemporalType.DATE)
+    @Temporal(TemporalType.TIMESTAMP)
     private Date endDate;
 
+    // Tổng tiền hợp đồng ban đầu (Giá thuê cơ bản + Phụ phí dịch vụ - Khuyến mãi)
     private double totalAmount;
 
-    private double refundAmount; // Số tiền hoàn lại khi hủy đơn
+    // Số tiền cọc bắt buộc khách phải thanh toán trước khi nhận xe
+    private double depositAmount;
+
+    // Số tiền hệ thống sẽ hoàn trả tùy thuộc vào thời điểm và người chủ động hủy đơn
+    private double refundAmount;
+
+    // Các khoản phí phát sinh thực tế được ghi nhận độc lập lúc trả xe
+    @Column(columnDefinition = "double default 0")
+    private double lateFee;
+
+    @Column(columnDefinition = "double default 0")
+    private double damageFee;
 
     private boolean hasPet;
     private boolean hasGPS;
     private boolean hasBabySeat;
     private boolean hasDashcam;
 
+    // Mốc thời gian chủ xe duyệt đơn, dùng làm cơ sở cho Scheduler tự động hủy nếu khách không cọc
     @Temporal(TemporalType.TIMESTAMP)
-    private Date confirmedAt; // Thời điểm Owner xác nhận (để tính 12h tự hủy)
+    private Date confirmedAt;
 
     @Enumerated(EnumType.STRING)
     private BookingStatus bookingStatus;
@@ -50,6 +69,7 @@ public class Booking implements BookingOrder{
     @JoinColumn(name = "vehicle_id")
     private Vehicle vehicle;
 
+    // Đối tượng quản lý luồng trạng thái, chỉ tồn tại ở runtime (không lưu xuống database)
     @Transient
     private BookingState state;
 
@@ -58,37 +78,19 @@ public class Booking implements BookingOrder{
         this.bookingStatus = BookingStatus.PENDING;
     }
 
-    // database
+    // Tự động khôi phục State object tương ứng dựa trên giá trị Enum sau khi load từ Database
     @PostLoad
     public void restoreStateFromEnum() {
-        if (bookingStatus == null) {
-            return;
-        }
+        if (bookingStatus == null) return;
         switch (bookingStatus) {
-            case PENDING:
-                this.state = new PendingState();
-                break;
-            case CONFIRMED:
-                this.state = new ConfirmedState();
-                break;
-            case DEPOSIT_PAID:
-                this.state = new DepositPaidState();
-                break;
-            case RENTING:
-                this.state = new RentingState();
-                break;
-            case RETURNED:
-                this.state = new ReturnedState();
-                break;
-            case COMPLETED:
-                this.state = new CompletedState();
-                break;
-            case CANCELLED:
-                this.state = new CancelledState();
-                break;
-            default:
-                this.state = new PendingState();
-                break;
+            case PENDING -> this.state = new PendingState();
+            case CONFIRMED -> this.state = new ConfirmedState();
+            case DEPOSIT_PAID -> this.state = new DepositPaidState();
+            case RENTING -> this.state = new RentingState();
+            case RETURNED -> this.state = new ReturnedState();
+            case COMPLETED -> this.state = new CompletedState();
+            case CANCELLED -> this.state = new CancelledState();
+            default -> this.state = new PendingState();
         }
     }
 
@@ -104,28 +106,17 @@ public class Booking implements BookingOrder{
         this.state = state;
     }
 
-    public void confirm() {
-        getState().confirm(this);
-    }
+    // --- Các hàm Delegate chuyển tiếp yêu cầu xử lý trạng thái cho State object ---
+    public void confirm() { getState().confirm(this); }
+    public void payDeposit() { getState().payDeposit(this); }
+    public void pickUpVehicle() { getState().pickUpVehicle(this); }
+    public void returnVehicle() { getState().returnVehicle(this); }
+    public void complete() { getState().complete(this); }
+    public void cancel() { getState().cancel(this); }
 
-    public void payDeposit() {
-        getState().payDeposit(this);
-    }
-
-    public void pickUpVehicle() {
-        getState().pickUpVehicle(this);
-    }
-
-    public void returnVehicle() {
-        getState().returnVehicle(this);
-    }
-
-    public void complete() {
-        getState().complete(this);
-    }
-
-    public void cancel() {
-        getState().cancel(this);
+    // Tính số tiền cuối cùng khách phải trả sau chuyến đi
+    public double calculateFinalPaymentRequired() {
+        return (totalAmount + lateFee + damageFee) - depositAmount;
     }
 
     @Override
@@ -135,6 +126,6 @@ public class Booking implements BookingOrder{
 
     @Override
     public String getDescription() {
-        return "Don dat co ban";
+        return "Đơn đặt xe cơ bản";
     }
 }

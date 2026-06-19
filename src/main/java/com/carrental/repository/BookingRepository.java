@@ -28,4 +28,5 @@ public interface BookingRepository extends JpaRepository<Booking, Integer> {
             @Param("startDate") java.util.Date startDate,
             @Param("endDate") java.util.Date endDate
     );
+
 }

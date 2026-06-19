@@ -3,13 +3,7 @@ package com.carrental.service;
 import com.carrental.DTO.BookingRequest;
 import com.carrental.DTO.BookingResponse;
 import com.carrental.model.entity.Coupon;
-import com.carrental.model.entity.Decorator.Booking;
-import com.carrental.model.entity.Decorator.BookingOrder;
-import com.carrental.model.entity.Decorator.CouponDecorator;
-import com.carrental.model.entity.Decorator.PetDecorator;
-import com.carrental.model.entity.Decorator.GPSDecorator;
-import com.carrental.model.entity.Decorator.BabySeatDecorator;
-import com.carrental.model.entity.Decorator.DashcamDecorator;
+import com.carrental.model.entity.Decorator.*;
 import com.carrental.model.entity.Renter;
 import com.carrental.model.entity.Vehicle;
 import com.carrental.model.enums.BookingStatus;
@@ -27,6 +21,9 @@ import java.util.List;
 import java.util.Observable;
 import java.util.stream.Collectors;
 
+/**
+ * Xử lý nghiệp vụ lõi của tính năng Đặt xe.
+ */
 @Service
 @RequiredArgsConstructor
 public class BookingService extends Observable {
@@ -36,9 +33,9 @@ public class BookingService extends Observable {
     private final VehicleRepository vehicleRepository;
     private final CouponRepository couponRepository;
 
-
     @Transactional
     public BookingResponse createBooking(BookingRequest request) {
+        // 1. Kiểm tra tính hợp lệ của thời gian
         if (request.getStartDate() == null || request.getEndDate() == null) {
             throw new IllegalArgumentException("Ngày bắt đầu và ngày kết thúc không được để trống.");
         }
@@ -46,256 +43,214 @@ public class BookingService extends Observable {
             throw new IllegalArgumentException("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu.");
         }
 
-        // Đã sửa lỗi khai báo trùng biến renter
+        // 2. Định danh khách thuê và xác thực xe
         Renter renter = (Renter) userRepository.findById(request.getRenterId())
                 .filter(Renter.class::isInstance)
                 .map(Renter.class::cast)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Không tìm thấy người thuê hợp lệ với ID: " + request.getRenterId()));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy người thuê hợp lệ với ID: " + request.getRenterId()));
 
         Vehicle vehicle = vehicleRepository.findById(request.getVehicleId())
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy xe với ID: " + request.getVehicleId()));
 
-        // 4. Kiểm tra trùng lịch đặt
+        // 3. Đảm bảo xe không bị trùng lịch (Chỉ query các đơn có status đang active)
         List<Booking> overlaps = bookingRepository.findOverlappingBookings(
                 request.getVehicleId(), request.getStartDate(), request.getEndDate());
         if (!overlaps.isEmpty()) {
             throw new IllegalStateException("Xe đã được đặt hoặc thuê trong khoảng thời gian này.");
         }
 
-        long diff = request.getEndDate().getTime() - request.getStartDate().getTime();
-        long days = (diff / (24 * 60 * 60 * 1000)) + 1;
-        if (days <= 0) {
-            days = 1;
-        }
-        double totalAmount = days * vehicle.getPricePerDay();
+        // 4. Tính toán giá trị thuê cơ bản theo ngày
+        long diffMs = request.getEndDate().getTime() - request.getStartDate().getTime();
+        long days = (diffMs / (24 * 60 * 60 * 1000)) + 1;
+        double baseAmount = Math.max(days, 1) * vehicle.getPricePerDay();
 
+        // 5. Khởi tạo Context cho Decorator
         Booking booking = new Booking();
         booking.setBookingDate(new Date());
-        booking.setStartDate(new Date(request.getStartDate().getTime()));
-        booking.setEndDate(new Date(request.getEndDate().getTime()));
-        booking.setTotalAmount(totalAmount);
-        booking.setBookingStatus(BookingStatus.PENDING);
+        booking.setStartDate(request.getStartDate());
+        booking.setEndDate(request.getEndDate());
+        booking.setTotalAmount(baseAmount);
         booking.setRenter(renter);
         booking.setVehicle(vehicle);
         booking.setHasPet(request.isHasPet());
         booking.setHasGPS(request.isHasGPS());
         booking.setHasBabySeat(request.isHasBabySeat());
         booking.setHasDashcam(request.isHasDashcam());
-        
+
+        // 6. Áp dụng Decorator Pattern để tính tổng phụ phí và khuyến mãi
         BookingOrder finalOrder = booking;
-
-        // Bọc thêm gói mang theo thú cưng (Phí: 150,000 VNĐ)
-        if (request.isHasPet()) {
-            finalOrder = new PetDecorator(finalOrder, 150000.0);
-        }
-
-        // Bọc thêm gói định vị GPS (Phí: 50,000 VNĐ)
-        if (request.isHasGPS()) {
-            finalOrder = new GPSDecorator(finalOrder, 50000.0);
-        }
-
-        // Bọc thêm gói ghế trẻ em (Phí: 100,000 VNĐ)
-        if (request.isHasBabySeat()) {
-            finalOrder = new BabySeatDecorator(finalOrder, 100000.0);
-        }
-
-        // Bọc thêm gói camera hành trình (Phí: 80,000 VNĐ)
-        if (request.isHasDashcam()) {
-            finalOrder = new DashcamDecorator(finalOrder, 80000.0);
-        }
-
+        if (request.isHasPet()) finalOrder = new PetDecorator(finalOrder, 150000.0);
+        if (request.isHasGPS()) finalOrder = new GPSDecorator(finalOrder, 50000.0);
+        if (request.isHasBabySeat()) finalOrder = new BabySeatDecorator(finalOrder, 100000.0);
+        if (request.isHasDashcam()) finalOrder = new DashcamDecorator(finalOrder, 80000.0);
 
         if (request.getCouponCode() != null && !request.getCouponCode().trim().isEmpty()) {
-            // Tìm coupon trong database thông qua Repo
             Coupon coupon = couponRepository.findByCode(request.getCouponCode().trim());
-
             if (coupon != null) {
-                // Bọc đối tượng booking bằng CouponDecorator để tính số tiền sau khi giảm giá %
                 finalOrder = new CouponDecorator(finalOrder, coupon);
             } else {
                 throw new IllegalArgumentException("Mã giảm giá không tồn tại hoặc đã hết hạn.");
             }
         }
 
-        // --- BƯỚC 4: LẤY SỐ TIỀN CUỐI CÙNG TỪ DECORATOR VÀ LƯU LẠI ---
+        // 7. Chốt giá trị hóa đơn và tính tiền cọc (30%)
         double finalAmount = finalOrder.calculateTotal();
         booking.setTotalAmount(finalAmount);
+        booking.setDepositAmount(finalAmount * 0.30);
 
         Booking savedBooking = bookingRepository.save(booking);
-        BookingResponse bookingResponse = mapToResponse(bookingRepository.save(booking));
 
+        // 8. Kích hoạt Observer Pattern để gửi thông báo cho Chủ xe
         if (booking.getVehicle() != null && booking.getVehicle().getOwner() != null) {
-            int realOwnerId = booking.getVehicle().getOwner().getUserId();
-
-            com.carrental.observer.OwnerObserver.triggerNotification(realOwnerId);
+            com.carrental.observer.OwnerObserver.triggerNotification(booking.getVehicle().getOwner().getUserId());
         }
-        return mapToResponse(savedBooking);
-    }
 
-    @Transactional
-    public BookingResponse updateBookingStatus(int bookingId, BookingStatus status) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
-        booking.setBookingStatus(status);
-        Booking savedBooking = bookingRepository.save(booking);
         return mapToResponse(savedBooking);
     }
 
     @Transactional
     public BookingResponse approveBooking(int bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
-
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn: " + bookingId));
         booking.restoreStateFromEnum();
         booking.confirm();
-        booking.setConfirmedAt(new Date(System.currentTimeMillis()));
-
-        Booking savedBooking = bookingRepository.save(booking);
-        return mapToResponse(savedBooking);
+        booking.setConfirmedAt(new Date());
+        return mapToResponse(bookingRepository.save(booking));
     }
 
     @Transactional
     public BookingResponse cancelBooking(int bookingId, String role) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Booking với ID: " + bookingId));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn: " + bookingId));
 
+        // Chủ xe không được hủy khi đang chờ khách cọc để tránh thao tác sai
         if ("OWNER".equalsIgnoreCase(role) && booking.getBookingStatus() == BookingStatus.CONFIRMED) {
             throw new IllegalStateException("Chủ xe không thể hủy đơn khi đang chờ khách cọc.");
         }
 
-        if (List.of(BookingStatus.DEPOSIT_PAID, BookingStatus.CONFIRMED).contains(booking.getBookingStatus())) {
-            double deposit = booking.getTotalAmount();
+        booking.setRefundAmount(0);
+
+        // Logic hoàn tiền chỉ áp dụng nếu khách đã nộp cọc
+        if (booking.getBookingStatus() == BookingStatus.DEPOSIT_PAID) {
+            double deposit = booking.getDepositAmount();
+
             if ("OWNER".equalsIgnoreCase(role)) {
+                // Chủ xe hủy: Hoàn 100% tiền cọc cho khách
                 booking.setRefundAmount(deposit);
-                System.out.println("Owner hủy, hoàn tiền cọc 100%: " + deposit);
             } else {
+                // Khách hủy: Tính toán dựa trên khoảng thời gian còn lại trước khi nhận xe
                 long diffMs = booking.getStartDate().getTime() - System.currentTimeMillis();
                 long hours = diffMs / (1000 * 60 * 60);
+
                 if (hours > 48) {
-                    booking.setRefundAmount(deposit);
-                    System.out.println("Renter hủy trước >48h, hoàn 100%: " + deposit);
+                    booking.setRefundAmount(deposit);         // Hủy sớm: Hoàn 100%
                 } else if (hours > 24) {
-                    booking.setRefundAmount(deposit * 0.5);
-                    System.out.println("Renter hủy trước 24-48h, hoàn 50%: " + (deposit * 0.5));
+                    booking.setRefundAmount(deposit * 0.5);   // Hủy sát ngày: Hoàn 50%
                 } else {
-                    booking.setRefundAmount(0);
-                    System.out.println("Renter hủy trước <24h, hoàn 0%");
+                    booking.setRefundAmount(0);               // Hủy khẩn cấp: Mất cọc
                 }
             }
         }
 
-        // Khôi phục lại State object từ Enum dưới DB
         booking.restoreStateFromEnum();
         booking.cancel();
-
-        Booking savedBooking = bookingRepository.save(booking);
-        return mapToResponse(savedBooking);
+        return mapToResponse(bookingRepository.save(booking));
     }
 
     @Transactional
     public BookingResponse payDeposit(int bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
-
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn: " + bookingId));
         booking.restoreStateFromEnum();
         booking.payDeposit();
-
-        Booking savedBooking = bookingRepository.save(booking);
-        return mapToResponse(savedBooking);
+        return mapToResponse(bookingRepository.save(booking));
     }
 
     @Transactional
     public BookingResponse pickUpVehicle(int bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
-
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn: " + bookingId));
         booking.restoreStateFromEnum();
         booking.pickUpVehicle();
-
-        Booking savedBooking = bookingRepository.save(booking);
-        return mapToResponse(savedBooking);
+        return mapToResponse(bookingRepository.save(booking));
     }
 
     @Transactional
     public BookingResponse returnVehicle(int bookingId, double lateFee, double damageFee) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn: " + bookingId));
 
-        double totalExtraFee = lateFee + damageFee;
-        if (totalExtraFee > 0) {
-            booking.setTotalAmount(booking.getTotalAmount() + totalExtraFee);
-        }
+        // Ghi nhận các khoản phụ phí phát sinh lúc trả xe
+        booking.setLateFee(lateFee);
+        booking.setDamageFee(damageFee);
 
         booking.restoreStateFromEnum();
         booking.returnVehicle();
-
-        Booking savedBooking = bookingRepository.save(booking);
-        return mapToResponse(savedBooking);
+        return mapToResponse(bookingRepository.save(booking));
     }
 
     @Transactional
-        public BookingResponse completeBooking(int bookingId) {
+    public BookingResponse completeBooking(int bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
-
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn: " + bookingId));
         booking.restoreStateFromEnum();
         booking.complete();
-
-        Booking savedBooking = bookingRepository.save(booking);
-        return mapToResponse(savedBooking);
+        return mapToResponse(bookingRepository.save(booking));
     }
 
     @Transactional
     public BookingResponse rejectBooking(int bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
-
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn: " + bookingId));
         booking.restoreStateFromEnum();
         booking.cancel();
-
-        Booking savedBooking = bookingRepository.save(booking);
-        return mapToResponse(savedBooking);
+        return mapToResponse(bookingRepository.save(booking));
     }
 
-    public List<BookingResponse> getRenterBookings(int renterId) {
-        List<Booking> bookings = bookingRepository.findByRenterUserId(renterId);
-        return bookings.stream().map(this::mapToResponse).collect(Collectors.toList());
+    // Cron job: Dọn dẹp các đơn hàng ảo (đã xác nhận nhưng khách không thanh toán cọc sau 12 giờ)
+    @Scheduled(fixedRateString = "${scheduler.autoCancelUnpaidBookingsRate:3600000}")
+    @Transactional
+    public void autoCancelUnpaidBookings() {
+        Date threshold = new Date(System.currentTimeMillis() - (12 * 60 * 60 * 1000));
+
+        // Truy vấn trực tiếp các đơn quá hạn
+        List<Booking> overdueBookings =
+                bookingRepository.findAll().stream().filter(b ->
+                        BookingStatus.CONFIRMED.equals(b.getBookingStatus())
+                                && b.getConfirmedAt() != null && b.getConfirmedAt().before(threshold))
+                        .collect(Collectors.toList());
+        for (Booking b : overdueBookings) {
+            b.restoreStateFromEnum();
+            b.cancel();
+        }
+
+        // Lưu hàng loạt (Batch update)
+        bookingRepository.saveAll(overdueBookings);
     }
 
-    public List<BookingResponse> getOwnerBookings(int ownerId) {
-        List<Booking> bookings = bookingRepository.findByVehicleOwnerUserId(ownerId);
-        return bookings.stream().map(this::mapToResponse).collect(Collectors.toList());
+    public BookingResponse updateBookingStatus(int bookingId, BookingStatus status) {
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn: " + bookingId));
+        booking.setBookingStatus(status);
+        return mapToResponse(bookingRepository.save(booking));
     }
 
     public BookingResponse getBookingById(int bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn đặt xe với ID: " + bookingId));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy đơn: " + bookingId));
         return mapToResponse(booking);
     }
 
-    @Scheduled(fixedRateString = "${scheduler.autoCancelUnpaidBookingsRate:3600000}")
-    @Transactional
-    public void autoCancelUnpaidBookings() {
-        System.out.println("Scheduler: Quét các đơn hàng quá 12h chưa cọc...");
-        List<Booking> allBookings = bookingRepository.findAll();
-
-        List<Booking> overdueBookings = allBookings.stream()
-                .filter(b -> BookingStatus.CONFIRMED.equals(b.getBookingStatus()) && b.getConfirmedAt() != null)
-                .filter(b -> {
-                    return (System.currentTimeMillis() - b.getConfirmedAt().getTime()) / (1000 * 60 * 60) >= 12;
-                })
-                .collect(Collectors.toList());
-
-        for (Booking b : overdueBookings) {
-            System.out.println("Scheduler: Tự động hủy Booking ID " + b.getBookingId() + " do quá hạn cọc.");
-            b.restoreStateFromEnum();
-            b.cancel();
-            bookingRepository.save(b);
-        }
+    public List<BookingResponse> getRenterBookings(int renterId) {
+        return bookingRepository.findByRenterUserId(renterId).stream()
+                .map(this::mapToResponse).collect(Collectors.toList());
     }
 
-    // Đã thêm vỏ hàm private BookingResponse mapToResponse(Booking booking) để bọc các dòng code bị lỗi
+    public List<BookingResponse> getOwnerBookings(int ownerId) {
+        return bookingRepository.findByVehicleOwnerUserId(ownerId).stream()
+                .map(this::mapToResponse).collect(Collectors.toList());
+    }
+
     private BookingResponse mapToResponse(Booking booking) {
         BookingResponse response = new BookingResponse();
         response.setBookingId(booking.getBookingId());
@@ -322,7 +277,6 @@ public class BookingService extends Observable {
             response.setLicensePlate(booking.getVehicle().getLicensePlate());
             response.setPricePerDay(booking.getVehicle().getPricePerDay());
         }
-
         return response;
     }
 }
