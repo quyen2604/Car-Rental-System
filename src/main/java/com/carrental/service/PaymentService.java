@@ -45,31 +45,27 @@ public class PaymentService {
         PaymentStrategy strategy = resolveStrategy(req.getMethod());
 
         // Tạo bản ghi thanh toán trạng thái PENDING trước và lưu để lấy paymentId
-        Payment payment = createPaymentRecord(booking, req.getAmount(),
-                PaymentType.DEPOSIT, req.getMethod(), req.getNote());
-        payment = paymentRepository.save(payment);
+                Payment payment = createPaymentRecord(booking, req.getAmount(), PaymentType.DEPOSIT,
+                        req.getMethod(), req.getNote());
+                payment = paymentRepository.save(payment);
 
         try {
-            // Thực thi thanh toán qua Strategy (Thêm timestamp vào orderId để tránh trùng lặp mã đơn trong MoMo)
-            String momoOrderId = payment.getPaymentId() + "_" + System.currentTimeMillis();
-            String resultUrl = strategy.processPay(req.getAmount(), momoOrderId, "Cọc xe booking " + booking.getBookingId());
+            // 1. Gọi chiến lược xử lý.
+            // Thằng CASH sẽ tự set SUCCESS vào payment và trả về null.
+            // Thằng MOMO sẽ tự set PENDING vào payment và trả về cái Link.
+            String resultUrl = strategy.processPay(payment, booking, req.getAmount());
 
-            if ("CASH".equalsIgnoreCase(req.getMethod())) {
-                // Cập nhật trạng thái SUCCESS
-                payment.setPaymentStatus(PaymentStatus.SUCCESS);
-                payment.setTransactionId(generateTransactionId("DEP", booking.getBookingId()));
-                System.out.println("✅ [DEPOSIT] Cọc tiền thành công - Booking #" + booking.getBookingId()
-                        + " | Số tiền: " + req.getAmount() + " VNĐ | Phương thức: " + req.getMethod());
-            } else {
-                // MoMo: Keep status as PENDING
-                System.out.println("📱 [DEPOSIT] Đã tạo link MoMo - Booking #" + booking.getBookingId());
-            }
-
+            // 2. Lưu thông tin hóa đơn đã được Strategy xuống DB
             Payment saved = paymentRepository.save(payment);
+
+            // 3. Đóng gói dữ liệu trả về cho Controller
             PaymentResponse res = mapToResponse(saved);
-            if (!"CASH".equalsIgnoreCase(req.getMethod())) {
+
+            // Nếu có link kết quả (như MoMo) thì đính kèm vào cho Frontend dùng
+            if (resultUrl != null) {
                 res.setPayUrl(resultUrl);
             }
+
             return res;
         } catch (Exception e) {
             payment.setPaymentStatus(PaymentStatus.FAILED);
@@ -99,23 +95,19 @@ public class PaymentService {
         payment = paymentRepository.save(payment);
 
         try {
-            String momoOrderId = payment.getPaymentId() + "_" + System.currentTimeMillis();
-            String resultUrl = strategy.processPay(req.getAmount(), momoOrderId, "Thanh toán tổng booking " + booking.getBookingId());
+            // 1. Thực thi đa hình qua Strategy
+            String resultUrl = strategy.processPay(payment, booking, req.getAmount());
 
-            if ("CASH".equalsIgnoreCase(req.getMethod())) {
-                payment.setPaymentStatus(PaymentStatus.SUCCESS);
-                payment.setTransactionId(generateTransactionId("FIN", booking.getBookingId()));
-                System.out.println("✅ [FINAL] Thanh toán tổng thành công - Booking #" + booking.getBookingId()
-                        + " | Số tiền: " + req.getAmount() + " VNĐ | Phương thức: " + req.getMethod());
-            } else {
-                System.out.println("📱 [FINAL] Đã tạo link MoMo - Booking #" + booking.getBookingId());
-            }
-
+            // 2. Đồng bộ lưu hóa đơn sau xử lý xuống DB
             Payment saved = paymentRepository.save(payment);
+
+            // 3. Chuẩn bị dữ liệu DTO trả về cho Frontend
             PaymentResponse res = mapToResponse(saved);
-            if (!"CASH".equalsIgnoreCase(req.getMethod())) {
+
+            if (resultUrl != null) {
                 res.setPayUrl(resultUrl);
             }
+
             return res;
         } catch (Exception e) {
             payment.setPaymentStatus(PaymentStatus.FAILED);
@@ -135,22 +127,30 @@ public class PaymentService {
         }
 
         PaymentStrategy strategy = resolveStrategy(method);
+
         strategy.refund(amount, String.valueOf(bookingId));
         System.out.println("🔄 Đã hoàn tiền " + amount + " VNĐ cho Booking ID: " + bookingId
                 + " qua " + method);
     }
 
     // =========================================================
-    // LEGACY METHOD (giữ nguyên để không breaking change)
+    // LEGACY METHOD
     // =========================================================
     @Transactional
     public void processPay(double amount, PaymentType paymentType, String method) {
         if (amount <= 0) {
             throw new IllegalArgumentException("Số tiền thanh toán phải lớn hơn 0.");
         }
+
+        // Vì hàm này không có Booking hay Payment thật, ta tạo nhanh object rỗng giả lập
+        // để đẩy vào chạy mà không làm gãy (crash) hệ thống
+        Payment dummyPayment = new Payment();
+        Booking dummyBooking = new Booking();
+
         PaymentStrategy strategy = resolveStrategy(method);
-        strategy.processPay(amount, "LEGACY", "Thanh toán legacy");
-        System.out.println("✅ Đã xử lý thanh toán loại " + paymentType + " bằng " + method.toUpperCase());
+        strategy.processPay(dummyPayment, dummyBooking, amount);
+
+        System.out.println("✅ [LEGACY] Đã xử lý thanh toán loại " + paymentType + " bằng " + method.toUpperCase());
     }
 
     // =========================================================
@@ -190,9 +190,7 @@ public class PaymentService {
         return payment;
     }
 
-    private String generateTransactionId(String prefix, int bookingId) {
-        return prefix + "-" + bookingId + "-" + System.currentTimeMillis();
-    }
+
 
     private PaymentResponse mapToResponse(Payment p) {
         PaymentResponse res = new PaymentResponse();
