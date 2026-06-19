@@ -1,5 +1,8 @@
 package com.carrental.strategy;
 
+import com.carrental.model.entity.Decorator.Booking;
+import com.carrental.model.entity.Payment;
+import com.carrental.model.enums.PaymentStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -37,19 +40,26 @@ public class MomoStrategy implements PaymentStrategy {
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Override
-    public String processPay(double amount, String orderId, String orderInfo) {
+    public String processPay(Payment payment, Booking booking, double amount) {
         try {
+            // TỰ SINH DỮ LIỆU TỪ INPUT MỚI:
+            // 1. Tự sinh orderId cho MoMo bằng cách lấy ID của bản ghi payment vừa lưu + timestamp
+            String momoOrderId = payment.getPaymentId() + "_" + System.currentTimeMillis();
+
+            // 2. Tự sinh thông tin đơn hàng từ đối tượng booking
+            String orderInfo = "Cọc xe booking " + booking.getBookingId();
+
             String requestId = String.valueOf(System.currentTimeMillis());
             String requestType = "captureWallet";
             String extraData = "";
             long amountLong = (long) amount;
 
-            // 1. Build the raw signature string
+            // 1. Build the raw signature string (Dùng momoOrderId và orderInfo vừa tạo ở trên)
             String rawHash = "accessKey=" + accessKey +
                     "&amount=" + amountLong +
                     "&extraData=" + extraData +
                     "&ipnUrl=" + ipnUrl +
-                    "&orderId=" + orderId +
+                    "&orderId=" + momoOrderId +
                     "&orderInfo=" + orderInfo +
                     "&partnerCode=" + partnerCode +
                     "&redirectUrl=" + redirectUrl +
@@ -66,8 +76,8 @@ public class MomoStrategy implements PaymentStrategy {
             requestBody.put("storeId", "MomoStore");
             requestBody.put("requestId", requestId);
             requestBody.put("amount", amountLong);
-            requestBody.put("orderId", orderId);
-            requestBody.put("orderInfo", orderInfo);
+            requestBody.put("orderId", momoOrderId); // Thay đổi biến ở đây
+            requestBody.put("orderInfo", orderInfo); // Thay đổi biến ở đây
             requestBody.put("redirectUrl", redirectUrl);
             requestBody.put("ipnUrl", ipnUrl);
             requestBody.put("lang", "vi");
@@ -84,6 +94,9 @@ public class MomoStrategy implements PaymentStrategy {
             Map<String, Object> resBody = response.getBody();
 
             if (resBody != null && resBody.containsKey("payUrl")) {
+                // TRƯỚC KHI RETURN: Tự động cập nhật trạng thái PENDING cho đối tượng Payment
+                payment.setPaymentStatus(PaymentStatus.PENDING);
+
                 return (String) resBody.get("payUrl");
             } else {
                 throw new RuntimeException("MoMo response does not contain payUrl: " + resBody);
